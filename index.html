@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>家計簿</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header glass-panel">
+        <div>
+          <p class="kicker">Monthly household ledger</p>
+          <h1>家計簿</h1>
+        </div>
+        <nav class="page-nav" aria-label="ページ切替">
+          <button class="page-tab is-active" type="button" data-page-button="wallet" aria-current="page">財布</button>
+          <button class="page-tab" type="button" data-page-button="assets">総資産</button>
+        </nav>
+      </header>
+
+      <main>
+        <section class="page page--wallet is-active" id="walletPage" data-page="wallet" aria-label="財布">
+          <div class="wallet-hero glass-panel">
+            <span class="wallet-hero__label" id="walletHomeLabel">財布の残金</span>
+            <strong id="walletHomeBalance">0円</strong>
+            <button class="primary-button wallet-hero__button" id="openWalletEntryButton" type="button">財布の入出金を入力</button>
+          </div>
+        </section>
+
+        <section class="page page--assets" id="assetsPage" data-page="assets" aria-label="総資産" hidden>
+          <div class="asset-topbar glass-panel">
+            <div>
+              <p class="section-kicker">Asset overview</p>
+              <h2>総資産</h2>
+            </div>
+            <label class="month-control">
+              <span>対象月</span>
+              <input id="monthPicker" type="month" aria-label="対象月">
+            </label>
+          </div>
+
+          <section class="current-balance-grid" aria-label="現在残高">
+            <article class="balance-card balance-card--total">
+              <span class="balance-card__label">現在の合計残高</span>
+              <strong id="totalCurrentBalance">0円</strong>
+            </article>
+            <article class="balance-card">
+              <span class="balance-card__label" id="walletBalanceLabel">財布の残金</span>
+              <strong id="walletBalance">0円</strong>
+              <button class="mini-button" id="editWalletButton" type="button">編集</button>
+            </article>
+            <article class="balance-card">
+              <span class="balance-card__label" data-current-balance-label="account-1">口座1</span>
+              <strong data-current-balance="account-1">0円</strong>
+            </article>
+            <article class="balance-card">
+              <span class="balance-card__label" data-current-balance-label="account-2">口座2</span>
+              <strong data-current-balance="account-2">0円</strong>
+            </article>
+          </section>
+
+          <nav class="account-strip" aria-label="口座切替">
+            <button class="account-tab is-active" type="button" data-account-button="account-1">
+              <span class="account-tab__label" data-account-label="account-1">口座1</span>
+            </button>
+            <button class="account-tab" type="button" data-account-button="account-2">
+              <span class="account-tab__label" data-account-label="account-2">口座2</span>
+            </button>
+            <button class="ghost-button" id="editAccountsButton" type="button">口座を編集</button>
+          </nav>
+
+          <section class="active-account-banner" aria-live="polite">
+            <span class="active-account-banner__label">現在表示中</span>
+            <strong id="activeAccountName">口座</strong>
+          </section>
+
+          <section class="summary-grid" aria-label="月次サマリー" hidden>
+            <article class="summary-card">
+              <span class="summary-card__label">収入</span>
+              <strong id="incomeTotal">0円</strong>
+            </article>
+            <article class="summary-card">
+              <span class="summary-card__label">支出</span>
+              <strong id="expenseTotal">0円</strong>
+            </article>
+            <article class="summary-card">
+              <span class="summary-card__label">収支</span>
+              <strong id="balanceTotal">0円</strong>
+            </article>
+            <article class="summary-card">
+              <span class="summary-card__label">振替増減</span>
+              <strong id="transferNetTotal">0円</strong>
+            </article>
+            <article class="summary-card">
+              <span class="summary-card__label">自動入力済み固定収入</span>
+              <strong id="fixedIncomeTotal">0円</strong>
+            </article>
+            <article class="summary-card">
+              <span class="summary-card__label">自動入力済み固定支出</span>
+              <strong id="fixedExpenseTotal">0円</strong>
+            </article>
+          </section>
+
+          <section class="work-grid">
+            <section class="panel quick-entry" aria-labelledby="entryTitle">
+              <div class="panel-header">
+                <div>
+                  <p class="section-kicker">Quick entry</p>
+                  <h2 id="entryTitle">入出金を入力</h2>
+                </div>
+              </div>
+              <form id="transactionForm" class="entry-form">
+                <fieldset class="segmented-control" aria-label="種別">
+                  <input id="transactionExpense" type="radio" name="transactionType" value="expense" checked>
+                  <label for="transactionExpense">支出</label>
+                  <input id="transactionIncome" type="radio" name="transactionType" value="income">
+                  <label for="transactionIncome">収入</label>
+                </fieldset>
+
+                <label>
+                  <span>金額</span>
+                  <input id="amountInput" type="number" inputmode="numeric" min="1" step="1" placeholder="例: 1200" required>
+                </label>
+
+                <label>
+                  <span>カテゴリ</span>
+                  <input id="categoryInput" list="categoryOptions" type="text" placeholder="例: 食費" required>
+                  <datalist id="categoryOptions"></datalist>
+                </label>
+
+                <label>
+                  <span>日付</span>
+                  <input id="dateInput" type="date" required>
+                </label>
+
+                <label class="full-span">
+                  <span>メモ</span>
+                  <input id="memoInput" type="text" placeholder="任意">
+                </label>
+
+                <button class="primary-button full-span" type="submit">追加</button>
+                <p class="form-message" id="transactionMessage" role="status" aria-live="polite"></p>
+              </form>
+            </section>
+
+            <section class="panel fixed-panel" aria-labelledby="fixedTitle">
+              <div class="panel-header">
+                <div>
+                  <p class="section-kicker">Monthly recurring records</p>
+                  <h2 id="fixedTitle">固定収支の設定</h2>
+                </div>
+              </div>
+              <form id="fixedCostForm" class="fixed-form">
+                <fieldset class="segmented-control" aria-label="固定収支の種別">
+                  <input id="fixedExpense" type="radio" name="fixedType" value="expense" checked>
+                  <label for="fixedExpense">固定支出</label>
+                  <input id="fixedIncome" type="radio" name="fixedType" value="income">
+                  <label for="fixedIncome">固定収入</label>
+                </fieldset>
+                <label>
+                  <span>項目名</span>
+                  <input id="fixedNameInput" type="text" placeholder="例: 家賃 / 給与" required>
+                </label>
+                <label>
+                  <span>カテゴリ</span>
+                  <input id="fixedCategoryInput" list="categoryOptions" type="text" placeholder="例: 住居 / 給与" required>
+                </label>
+                <label>
+                  <span>金額</span>
+                  <input id="fixedAmountInput" type="number" inputmode="numeric" min="1" step="1" placeholder="例: 60000" required>
+                </label>
+                <label>
+                  <span>毎月の日</span>
+                  <input id="fixedDayInput" type="number" min="1" max="31" step="1" value="1" required>
+                </label>
+                <label>
+                  <span>開始月</span>
+                  <select id="fixedStartMonthSelect" required>
+                    <option value="next">来月から</option>
+                    <option value="current">今月から</option>
+                  </select>
+                </label>
+                <button class="secondary-button" id="fixedSubmitButton" type="submit">固定支出を追加</button>
+                <p class="form-message" id="fixedMessage" role="status" aria-live="polite"></p>
+              </form>
+              <div class="fixed-list" id="fixedCostList"></div>
+            </section>
+
+            <section class="panel transfer-panel" aria-labelledby="transferTitle">
+              <div class="panel-header">
+                <div>
+                  <p class="section-kicker">Account transfer</p>
+                  <h2 id="transferTitle">口座間振込</h2>
+                </div>
+              </div>
+              <form id="transferForm" class="transfer-form">
+                <label>
+                  <span>振込元</span>
+                  <select id="transferFromSelect" required></select>
+                </label>
+                <label>
+                  <span>振込先</span>
+                  <select id="transferToSelect" required></select>
+                </label>
+                <label>
+                  <span>金額</span>
+                  <input id="transferAmountInput" type="number" inputmode="numeric" min="1" step="1" placeholder="例: 30000" required>
+                </label>
+                <label>
+                  <span>日付</span>
+                  <input id="transferDateInput" type="date" required>
+                </label>
+                <label class="full-span">
+                  <span>メモ</span>
+                  <input id="transferMemoInput" type="text" placeholder="任意">
+                </label>
+                <button class="primary-button full-span" type="submit">振込を追加</button>
+                <p class="form-message" id="transferMessage" role="status" aria-live="polite"></p>
+              </form>
+
+              <div class="subsection-header">
+                <div>
+                  <p class="section-kicker">Monthly automatic transfer</p>
+                  <h3>自動振込の設定</h3>
+                </div>
+              </div>
+              <form id="autoTransferForm" class="transfer-form">
+                <label>
+                  <span>振込元</span>
+                  <select id="autoTransferFromSelect" required></select>
+                </label>
+                <label>
+                  <span>振込先</span>
+                  <select id="autoTransferToSelect" required></select>
+                </label>
+                <label>
+                  <span>金額</span>
+                  <input id="autoTransferAmountInput" type="number" inputmode="numeric" min="1" step="1" placeholder="例: 30000" required>
+                </label>
+                <label>
+                  <span>毎月の日</span>
+                  <input id="autoTransferDayInput" type="number" min="1" max="31" step="1" value="1" required>
+                </label>
+                <label class="full-span">
+                  <span>メモ</span>
+                  <input id="autoTransferMemoInput" type="text" placeholder="任意">
+                </label>
+                <button class="secondary-button full-span" type="submit">自動振込を追加</button>
+                <p class="form-message" id="autoTransferMessage" role="status" aria-live="polite"></p>
+              </form>
+              <div class="auto-transfer-list" id="autoTransferList"></div>
+            </section>
+          </section>
+
+          <section class="chart-grid" aria-label="内訳グラフ">
+            <section class="panel chart-panel" aria-labelledby="incomeChartTitle">
+              <div class="panel-header">
+                <div>
+                  <p class="section-kicker">Income breakdown</p>
+                  <h2 id="incomeChartTitle">収入の内訳</h2>
+                </div>
+              </div>
+              <div class="chart-wrap">
+                <canvas id="incomeChart" width="260" height="260" aria-label="収入の円グラフ"></canvas>
+                <div class="legend" id="incomeLegend"></div>
+              </div>
+            </section>
+            <section class="panel chart-panel" aria-labelledby="expenseChartTitle">
+              <div class="panel-header">
+                <div>
+                  <p class="section-kicker">Expense breakdown</p>
+                  <h2 id="expenseChartTitle">支出の内訳</h2>
+                </div>
+              </div>
+              <div class="chart-wrap">
+                <canvas id="expenseChart" width="260" height="260" aria-label="支出の円グラフ"></canvas>
+                <div class="legend" id="expenseLegend"></div>
+              </div>
+            </section>
+          </section>
+
+          <section class="panel transactions-panel" aria-labelledby="transactionsTitle">
+            <div class="panel-header transactions-header">
+              <div>
+                <p class="section-kicker">Monthly records</p>
+                <h2 id="transactionsTitle">この月の記録</h2>
+              </div>
+              <button class="ghost-button" id="reflectFixedButton" type="button">固定収支を再確認</button>
+            </div>
+            <div id="transactionList" class="transaction-list"></div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="accountsDialog" class="account-dialog">
+      <form id="accountsForm" method="dialog">
+        <div class="dialog-header">
+          <h2>口座を編集</h2>
+          <button class="icon-button" value="cancel" type="submit" aria-label="閉じる">x</button>
+        </div>
+        <label>
+          <span>口座1</span>
+          <input id="accountOneName" type="text" required>
+        </label>
+        <label>
+          <span>口座1の現在残高</span>
+          <input id="accountOneBalance" type="number" inputmode="numeric" step="1" required>
+        </label>
+        <label>
+          <span>口座2</span>
+          <input id="accountTwoName" type="text" required>
+        </label>
+        <label>
+          <span>口座2の現在残高</span>
+          <input id="accountTwoBalance" type="number" inputmode="numeric" step="1" required>
+        </label>
+        <label>
+          <span>財布の残金</span>
+          <input id="walletBalanceInput" type="number" inputmode="numeric" step="1" required>
+        </label>
+        <div class="dialog-actions">
+          <button class="ghost-button" value="cancel" type="submit">キャンセル</button>
+          <button class="primary-button" id="saveAccountsButton" value="default" type="submit">保存</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="walletEntryDialog" class="account-dialog">
+      <form id="walletEntryForm" method="dialog">
+        <div class="dialog-header">
+          <h2>財布の入出金</h2>
+          <button class="icon-button" value="cancel" type="submit" formnovalidate aria-label="閉じる">x</button>
+        </div>
+        <fieldset class="segmented-control" aria-label="財布の入出金種別">
+          <input id="walletEntryExpense" type="radio" name="walletEntryType" value="expense" checked>
+          <label for="walletEntryExpense">支出</label>
+          <input id="walletEntryIncome" type="radio" name="walletEntryType" value="income">
+          <label for="walletEntryIncome">収入</label>
+        </fieldset>
+        <label>
+          <span>金額</span>
+          <input id="walletEntryAmountInput" type="number" inputmode="numeric" min="1" step="1" placeholder="例: 1200" required>
+        </label>
+        <label id="walletEntrySourceGroup" hidden>
+          <span>入金元</span>
+          <select id="walletEntrySourceSelect"></select>
+        </label>
+        <label>
+          <span>日付</span>
+          <input id="walletEntryDateInput" type="date" required>
+        </label>
+        <label>
+          <span>メモ</span>
+          <input id="walletEntryMemoInput" type="text" placeholder="任意">
+        </label>
+        <p class="form-message" id="walletEntryMessage" role="status" aria-live="polite"></p>
+        <div class="dialog-actions">
+          <button class="ghost-button" value="cancel" type="submit" formnovalidate>キャンセル</button>
+          <button class="primary-button" id="saveWalletEntryButton" value="default" type="submit">保存</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="walletDialog" class="account-dialog">
+      <form id="walletForm" method="dialog">
+        <div class="dialog-header">
+          <h2>財布を編集</h2>
+          <button class="icon-button" value="cancel" type="submit" aria-label="閉じる">x</button>
+        </div>
+        <label>
+          <span>財布名</span>
+          <input id="walletNameInput" type="text" required>
+        </label>
+        <label>
+          <span>財布の現在残高</span>
+          <input id="walletDirectInput" type="number" inputmode="numeric" step="1" required>
+        </label>
+        <div class="dialog-actions">
+          <button class="ghost-button" value="cancel" type="submit">キャンセル</button>
+          <button class="primary-button" id="saveWalletButton" value="default" type="submit">保存</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
