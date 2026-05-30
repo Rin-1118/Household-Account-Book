@@ -399,5 +399,30 @@
       }
     </script>
     <script src="./app.js"></script>
+    <script>
+      (() => {
+        const form = document.querySelector("#transactionForm");
+        const categoryInput = document.querySelector("#categoryInput");
+        if (!form || !categoryInput) return;
+
+        const clearExpenseCategory = (event) => {
+          if (event.target?.name !== "transactionType" || event.target.value !== "expense") return;
+          if (event.target.checked) categoryInput.value = "";
+        };
+
+        form.querySelectorAll('input[name="transactionType"]').forEach((input) => {
+          input.addEventListener("click", clearExpenseCategory);
+          input.addEventListener("change", clearExpenseCategory);
+        });
+
+        form.addEventListener("submit", () => {
+          if (new FormData(form).get("transactionType") === "expense") {
+            window.setTimeout(() => {
+              categoryInput.value = "";
+            }, 0);
+          }
+        });
+      })();
+    </script>
   </body>
 </html>
