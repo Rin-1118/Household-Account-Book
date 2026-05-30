@@ -125,6 +125,14 @@
                   <label for="transactionIncome">収入</label>
                 </fieldset>
 
+                <label id="accountExpenseDestinationGroup">
+                  <span>支出先</span>
+                  <select id="accountExpenseDestinationSelect">
+                    <option value="expense">支出として記録</option>
+                    <option value="wallet">財布に入れる</option>
+                  </select>
+                </label>
+
                 <label>
                   <span>金額</span>
                   <input id="amountInput" type="number" inputmode="numeric" min="1" step="1" placeholder="例: 1200" required>
@@ -191,6 +199,26 @@
                 <button class="secondary-button" id="fixedSubmitButton" type="submit">固定支出を追加</button>
                 <p class="form-message" id="fixedMessage" role="status" aria-live="polite"></p>
               </form>
+              <div class="early-fixed-box">
+                <div class="subsection-header">
+                  <div>
+                    <p class="section-kicker">Early fixed entry</p>
+                    <h3>固定収支の前倒し入力</h3>
+                  </div>
+                </div>
+                <form id="fixedEarlyForm" class="fixed-early-form">
+                  <label>
+                    <span>対象月</span>
+                    <input id="fixedEarlyTargetMonthInput" type="month" required>
+                  </label>
+                  <label>
+                    <span>入出金日</span>
+                    <input id="fixedEarlyDateInput" type="date" required>
+                  </label>
+                  <button class="secondary-button full-span" type="submit">対象月の固定収支を前倒し入力</button>
+                  <p class="form-message" id="fixedEarlyMessage" role="status" aria-live="polite"></p>
+                </form>
+              </div>
               <div class="fixed-list" id="fixedCostList"></div>
             </section>
 
