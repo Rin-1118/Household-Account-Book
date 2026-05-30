@@ -508,6 +508,7 @@ select:focus {
 
 .entry-form,
 .fixed-form,
+.fixed-early-form,
 .transfer-form {
   display: grid;
   gap: 12px;
@@ -515,6 +516,7 @@ select:focus {
 
 .entry-form,
 .transfer-form,
+.fixed-early-form,
 .fixed-form {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -589,6 +591,10 @@ select:focus {
 
 .subsection-header {
   margin: 18px 0 14px;
+}
+
+.early-fixed-box {
+  margin-top: 16px;
 }
 
 .fixed-section {
@@ -921,6 +927,7 @@ canvas {
 
   .entry-form,
   .fixed-form,
+  .fixed-early-form,
   .transfer-form {
     grid-template-columns: 1fr;
   }
