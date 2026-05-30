@@ -1,9 +1,10 @@
-const CACHE_NAME = "household-ledger-pwa-v5";
+const CACHE_NAME = "household-ledger-pwa-v6";
 const APP_ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
+  "./data-sync.js",
   "./manifest.webmanifest",
   "./icons/icon-180.png",
   "./icons/icon-192.png",
