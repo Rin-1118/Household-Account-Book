@@ -1,4 +1,4 @@
-const CACHE_NAME = "household-ledger-pwa-v13";
+const CACHE_NAME = "household-ledger-pwa-v14";
 const APP_ASSETS = [
   "./",
   "./index.html",
@@ -118,7 +118,13 @@ self.addEventListener("activate", (event) => {
     caches
       .keys()
       .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
-      .then(() => self.clients.claim()),
+      .then(() => self.clients.claim())
+      .then(() => self.clients.matchAll({ type: "window", includeUncontrolled: true }))
+      .then((clients) => {
+        clients.forEach((client) => {
+          if (client.url) client.navigate(client.url);
+        });
+      }),
   );
 });
 
