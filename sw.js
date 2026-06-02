@@ -1,4 +1,4 @@
-const CACHE_NAME = "household-ledger-pwa-v8";
+const CACHE_NAME = "household-ledger-pwa-v13";
 const APP_ASSETS = [
   "./",
   "./index.html",
@@ -9,6 +9,100 @@ const APP_ASSETS = [
   "./icons/icon-192.png",
   "./icons/icon-512.png",
 ];
+
+const RESET_HOTFIX_SCRIPT = `<script>
+(() => {
+  if (window.__householdResetHotfixLoaded) return;
+  window.__householdResetHotfixLoaded = true;
+  const STORAGE_KEY = "dual-account-budget.v1";
+  const MESSAGE_KEY = "household-month-reset-message";
+  const ensureButton = (container, className = "") => {
+    if (!container || container.querySelector("[data-reset-month-button]")) return;
+    const button = document.createElement("button");
+    button.className = ("danger-button " + className).trim();
+    button.type = "button";
+    button.dataset.resetMonthButton = "";
+    button.textContent = "この月をリセット";
+    container.append(button);
+  };
+  const setup = () => {
+    ensureButton(document.querySelector(".asset-topbar"), "reset-month-button");
+    ensureButton(document.querySelector(".transactions-actions") || document.querySelector(".transactions-header"));
+    const message = window.sessionStorage.getItem(MESSAGE_KEY);
+    const target = document.querySelector("#monthlyMessage") || document.querySelector("#fixedMessage");
+    if (message && target) target.textContent = message;
+    if (message) window.sessionStorage.removeItem(MESSAGE_KEY);
+  };
+  const selectedMonth = () => document.querySelector("#monthPicker")?.value || new Date().toISOString().slice(0, 7);
+  const txMonth = (transaction) => transaction?.budgetMonth || String(transaction?.date || "").slice(0, 7);
+  const balanceDelta = (transaction) => {
+    if (transaction.type === "income" || transaction.type === "transfer-in") return Number(transaction.amount || 0);
+    if (transaction.type === "expense" || transaction.type === "transfer-out") return -Number(transaction.amount || 0);
+    return 0;
+  };
+  const walletDelta = (transaction) => (transaction.type === "income" ? Number(transaction.amount || 0) : -Number(transaction.amount || 0));
+  const monthLabel = (monthKey) => {
+    const [year, month] = String(monthKey).split("-");
+    return year && month ? year + "/" + Number(month) : monthKey;
+  };
+  const resetMonth = () => {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const state = JSON.parse(raw);
+    const account = state.accounts?.find((item) => item.id === state.activeAccountId) || state.accounts?.[0];
+    const monthKey = selectedMonth();
+    if (!account || !monthKey) return;
+    if (!window.confirm(account.name + "の" + monthLabel(monthKey) + "の記録をリセットします。")) return;
+    const accountTransactionIds = new Set();
+    const transferIds = new Set();
+    const walletTransferIds = new Set();
+    account.transactions.forEach((transaction) => {
+      if (txMonth(transaction) !== monthKey) return;
+      accountTransactionIds.add(transaction.id);
+      if ((transaction.source === "transfer" || transaction.source === "auto-transfer") && transaction.transferId) transferIds.add(transaction.transferId);
+      if (transaction.source === "wallet-transfer" && transaction.transferId) walletTransferIds.add(transaction.transferId);
+    });
+    let removed = 0;
+    state.accounts.forEach((targetAccount) => {
+      targetAccount.transactions = targetAccount.transactions.filter((transaction) => {
+        const selected = targetAccount.id === account.id && accountTransactionIds.has(transaction.id);
+        const paired = transaction.transferId && transferIds.has(transaction.transferId);
+        if (!selected && !paired) return true;
+        if (transaction.balanceImpactApplied) targetAccount.currentBalance = Number(targetAccount.currentBalance || 0) - balanceDelta(transaction);
+        if (selected) removed += 1;
+        return false;
+      });
+    });
+    state.walletTransactions = (state.walletTransactions || []).filter((transaction) => {
+      if (!transaction.transferId || !walletTransferIds.has(transaction.transferId)) return true;
+      if (transaction.balanceImpactApplied) state.walletBalance = Number(state.walletBalance || 0) - walletDelta(transaction);
+      return false;
+    });
+    if (state.skippedRecurring?.[account.id]?.[monthKey]) {
+      delete state.skippedRecurring[account.id][monthKey];
+      if (!Object.keys(state.skippedRecurring[account.id]).length) delete state.skippedRecurring[account.id];
+    }
+    if (state.skippedRecurringTransfers?.[monthKey]) delete state.skippedRecurringTransfers[monthKey];
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    window.sessionStorage.setItem(MESSAGE_KEY, removed ? monthLabel(monthKey) + "の記録をリセットしました。" : monthLabel(monthKey) + "にはリセットする記録がありません。");
+    window.location.reload();
+  };
+  document.addEventListener("DOMContentLoaded", setup);
+  window.addEventListener("load", setup);
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-reset-month-button]");
+    if (!button || window.__householdSupportsMonthlyReset) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    resetMonth();
+  }, true);
+})();
+</script>`;
+
+function injectResetHotfix(html) {
+  if (html.includes("household-month-reset-message") || html.includes("__householdResetHotfixLoaded")) return html;
+  return html.replace("</body>", `${RESET_HOTFIX_SCRIPT}</body>`);
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -35,7 +129,27 @@ self.addEventListener("fetch", (event) => {
   if (requestUrl.origin !== self.location.origin) return;
 
   if (event.request.mode === "navigate") {
-    event.respondWith(fetch(event.request).catch(() => caches.match("./index.html")));
+    event.respondWith(
+      fetch(event.request)
+        .then(async (response) => {
+          const contentType = response.headers.get("content-type") || "";
+          if (!contentType.includes("text/html")) return response;
+          const headers = new Headers(response.headers);
+          headers.delete("content-length");
+          return new Response(injectResetHotfix(await response.text()), {
+            status: response.status,
+            statusText: response.statusText,
+            headers,
+          });
+        })
+        .catch(async () => {
+          const cached = await caches.match("./index.html");
+          if (!cached) return cached;
+          const headers = new Headers(cached.headers);
+          headers.delete("content-length");
+          return new Response(injectResetHotfix(await cached.text()), { headers });
+        }),
+    );
     return;
   }
 
