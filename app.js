@@ -318,7 +318,7 @@ function updateAuthCopy() {
   const hasCredential = Boolean(getStoredAuthCredentialId());
   elements.authTitle.textContent = hasCredential ? "Face IDで開く" : "Face IDを設定";
   elements.authDescription.textContent = hasCredential
-    ? "この家計簿を開くにはiPhoneのFace ID認証が必要です。"
+    ? "画面をタップするとiPhoneのFace ID認証に進みます。"
     : "初回だけ、この端末に家計簿用のFace ID認証を登録します。";
   elements.authPrimaryButton.textContent = hasCredential ? "Face IDで開く" : "Face IDを設定";
   elements.authResetButton.hidden = !hasCredential;
@@ -413,8 +413,11 @@ async function requireFaceAuth() {
   }
 
   return new Promise((resolve) => {
-    elements.authPrimaryButton.addEventListener("click", async () => {
+    let authenticating = false;
+    const authenticate = async () => {
+      if (authenticating) return;
       try {
+        authenticating = true;
         setAuthBusy(true);
         setAuthMessage("Face IDを確認しています。");
         await unlockWithFaceAuth();
@@ -425,7 +428,14 @@ async function requireFaceAuth() {
         updateAuthCopy();
       } finally {
         setAuthBusy(false);
+        authenticating = false;
       }
+    };
+
+    elements.authPrimaryButton.addEventListener("click", authenticate);
+    elements.authLock.addEventListener("click", (event) => {
+      if (event.target.closest("#authResetButton")) return;
+      authenticate();
     });
 
     elements.authResetButton.addEventListener("click", () => {
@@ -1100,7 +1110,7 @@ function openReceiptConfirmDialog(imageBlob) {
   elements.receiptMemoInput.value = "";
   elements.receiptConfirmMessage.textContent = "";
   elements.receiptConfirmDialog.showModal();
-  suggestReceiptAmount(imageBlob);
+  suggestReceiptDetails(imageBlob);
 }
 
 function captureReceiptPhoto() {
@@ -1152,9 +1162,45 @@ function extractReceiptAmount(text) {
   return yenCandidates.length ? Math.max(...yenCandidates) : 0;
 }
 
-async function suggestReceiptAmount(imageBlob) {
+function toIsoDate(year, month, day) {
+  const fullYear = year < 100 ? 2000 + year : year;
+  const date = new Date(fullYear, month - 1, day);
+  if (date.getFullYear() !== fullYear || date.getMonth() !== month - 1 || date.getDate() !== day) return "";
+  return `${fullYear}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function extractReceiptDate(text) {
+  const normalized = String(text || "").replace(/\s+/g, " ");
+  const fullDatePatterns = [
+    /((?:20)?\d{2})[年\/.\-]\s*(\d{1,2})[月\/.\-]\s*(\d{1,2})日?/g,
+    /(\d{4})(\d{2})(\d{2})/g,
+  ];
+
+  for (const pattern of fullDatePatterns) {
+    for (const match of normalized.matchAll(pattern)) {
+      const isoDate = toIsoDate(Number(match[1]), Number(match[2]), Number(match[3]));
+      if (isoDate) return isoDate;
+    }
+  }
+
+  const currentYear = Number(todayIso().slice(0, 4));
+  const monthDayPattern = /(?:日付|発行|購入|取引|利用|領収)?[^\d]{0,8}(\d{1,2})[月\/.\-]\s*(\d{1,2})日?/g;
+  for (const match of normalized.matchAll(monthDayPattern)) {
+    const month = Number(match[1]);
+    const day = Number(match[2]);
+    if (month < 1 || month > 12 || day < 1 || day > 31) continue;
+    const isoDate = toIsoDate(currentYear, month, day);
+    if (isoDate) return isoDate;
+  }
+
+  return "";
+}
+
+async function suggestReceiptDetails(imageBlob) {
+  elements.receiptDateInput.value = todayIso();
+
   if (!("TextDetector" in window) || !window.createImageBitmap) {
-    setMessage(elements.receiptConfirmMessage, "金額を確認して入力してください。");
+    setMessage(elements.receiptConfirmMessage, "AI判定を使えませんでした。金額と日付を確認して入力してください。");
     return;
   }
 
@@ -1164,14 +1210,21 @@ async function suggestReceiptAmount(imageBlob) {
     const detector = new window.TextDetector();
     const detectedText = (await detector.detect(imageBitmap)).map((item) => item.rawValue || "").join("\n");
     const amount = extractReceiptAmount(detectedText);
-    if (!amount) {
-      setMessage(elements.receiptConfirmMessage, "金額を読み取れませんでした。金額を入力してください。");
-      return;
+    const date = extractReceiptDate(detectedText);
+    if (amount) elements.receiptAmountInput.value = String(amount);
+    if (date) elements.receiptDateInput.value = date;
+
+    if (amount && date) {
+      setMessage(elements.receiptConfirmMessage, "AI判定した金額と日付を入力しました。必ず確認してください。");
+    } else if (amount) {
+      setMessage(elements.receiptConfirmMessage, "AI判定した金額を入力しました。日付も必ず確認してください。");
+    } else if (date) {
+      setMessage(elements.receiptConfirmMessage, "AI判定した日付を入力しました。金額を入力して、必ず確認してください。");
+    } else {
+      setMessage(elements.receiptConfirmMessage, "AI判定できませんでした。金額と日付を入力してください。");
     }
-    elements.receiptAmountInput.value = String(amount);
-    setMessage(elements.receiptConfirmMessage, "金額候補を入力しました。必ず確認してください。");
   } catch {
-    setMessage(elements.receiptConfirmMessage, "金額を読み取れませんでした。金額を入力してください。");
+    setMessage(elements.receiptConfirmMessage, "AI判定できませんでした。金額と日付を入力してください。");
   } finally {
     imageBitmap?.close?.();
   }
