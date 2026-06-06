@@ -5,6 +5,10 @@ const DEFAULT_EXPENSE_CATEGORIES = ["食費", "日用品", "交通", "住居", "
 const DEFAULT_INCOME_CATEGORIES = ["給与", "副収入", "仕送り", "利息", "その他"];
 const CHART_COLORS = ["#1b7f79", "#b94b3f", "#b7791f", "#327a4f", "#5d6f95", "#8b5e34", "#7c5a9e", "#566b5d"];
 const MAIN_ACCOUNT_ID = "account-1";
+const RECEIPT_OCR_ENDPOINT_KEY = "household-receipt-ocr-endpoint.v1";
+const DEFAULT_RECEIPT_OCR_ENDPOINT = "/api/receipt-ocr";
+const RECEIPT_IMAGE_MAX_SIDE = 1600;
+const RECEIPT_IMAGE_TARGET_BYTES = 2_500_000;
 const DEFAULT_ACCOUNT_NAMES = {
   "account-1": "１ヶ月分（メイン）",
   "account-2": "貯金",
@@ -1113,6 +1117,38 @@ function openReceiptConfirmDialog(imageBlob) {
   suggestReceiptDetails(imageBlob);
 }
 
+function canvasToBlob(canvas, type = "image/jpeg", quality = 0.82) {
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => resolve(blob), type, quality);
+  });
+}
+
+async function compressReceiptImageBlob(imageBlob) {
+  if (!window.createImageBitmap) return imageBlob;
+
+  let imageBitmap = null;
+  try {
+    imageBitmap = await createImageBitmap(imageBlob);
+    const scale = Math.min(1, RECEIPT_IMAGE_MAX_SIDE / Math.max(imageBitmap.width, imageBitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(imageBitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(imageBitmap.height * scale));
+    canvas.getContext("2d").drawImage(imageBitmap, 0, 0, canvas.width, canvas.height);
+
+    for (const quality of [0.82, 0.74, 0.66, 0.58]) {
+      const compressed = await canvasToBlob(canvas, "image/jpeg", quality);
+      if (compressed && compressed.size <= RECEIPT_IMAGE_TARGET_BYTES) return compressed;
+      if (compressed && quality === 0.58) return compressed;
+    }
+  } catch {
+    return imageBlob;
+  } finally {
+    imageBitmap?.close?.();
+  }
+
+  return imageBlob;
+}
+
 function captureReceiptPhoto() {
   const video = elements.receiptCameraVideo;
   const width = video.videoWidth;
@@ -1128,14 +1164,15 @@ function captureReceiptPhoto() {
   const context = canvas.getContext("2d");
   context.drawImage(video, 0, 0, width, height);
   canvas.toBlob(
-    (blob) => {
+    async (blob) => {
       if (!blob) {
         setMessage(elements.receiptCameraMessage, "撮影画像を作成できませんでした。");
         return;
       }
+      const compressedBlob = await compressReceiptImageBlob(blob);
       stopReceiptCamera();
       elements.receiptCameraDialog.close();
-      openReceiptConfirmDialog(blob);
+      openReceiptConfirmDialog(compressedBlob);
     },
     "image/jpeg",
     0.92,
@@ -1196,9 +1233,149 @@ function extractReceiptDate(text) {
   return "";
 }
 
+function isIsoDate(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || ""));
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(String(reader.result || "")));
+    reader.addEventListener("error", () => reject(new Error("画像を読み込めませんでした。")));
+    reader.readAsDataURL(blob);
+  });
+}
+
+function normalizeReceiptOcrEndpoint(value) {
+  const endpoint = String(value || "").trim();
+  if (!endpoint) return "";
+  if (endpoint.startsWith("/")) return endpoint;
+
+  try {
+    const url = new URL(endpoint);
+    if (url.protocol !== "https:") return "";
+    if (!url.pathname.endsWith("/api/receipt-ocr")) {
+      url.pathname = `${url.pathname.replace(/\/+$/, "")}/api/receipt-ocr`;
+    }
+    url.search = "";
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return "";
+  }
+}
+
+function getStoredReceiptOcrEndpoint() {
+  try {
+    return normalizeReceiptOcrEndpoint(window.localStorage.getItem(RECEIPT_OCR_ENDPOINT_KEY));
+  } catch {
+    return "";
+  }
+}
+
+function setStoredReceiptOcrEndpoint(endpoint) {
+  window.localStorage.setItem(RECEIPT_OCR_ENDPOINT_KEY, endpoint);
+}
+
+function clearStoredReceiptOcrEndpoint() {
+  window.localStorage.removeItem(RECEIPT_OCR_ENDPOINT_KEY);
+}
+
+function getReceiptOcrEndpoint() {
+  return getStoredReceiptOcrEndpoint() || normalizeReceiptOcrEndpoint(window.RECEIPT_OCR_ENDPOINT) || DEFAULT_RECEIPT_OCR_ENDPOINT;
+}
+
+function isGithubPagesHost() {
+  return window.location.hostname.endsWith("github.io");
+}
+
+function requestRemoteReceiptOcrEndpoint() {
+  const entered = window.prompt(
+    [
+      "GitHub PagesからAI判定を使うには、VercelのAI判定API URLが必要です。",
+      "Vercelで表示されるURLに /api/receipt-ocr を付けて入力してください。",
+      "例: https://your-project.vercel.app/api/receipt-ocr",
+    ].join("\n"),
+    getStoredReceiptOcrEndpoint(),
+  );
+  const endpoint = normalizeReceiptOcrEndpoint(entered);
+  if (!endpoint || endpoint.startsWith("/")) return "";
+  setStoredReceiptOcrEndpoint(endpoint);
+  return endpoint;
+}
+
+function resolveReceiptOcrEndpoint() {
+  const endpoint = getReceiptOcrEndpoint();
+  if (!isGithubPagesHost() || !endpoint.startsWith("/")) return endpoint;
+  return requestRemoteReceiptOcrEndpoint();
+}
+
+function applyReceiptSuggestion({ amount, date }, { source = "AI" } = {}) {
+  const hasAmount = Number.isFinite(Number(amount)) && Number(amount) > 0;
+  const hasDate = isIsoDate(date);
+
+  if (hasAmount) elements.receiptAmountInput.value = String(Math.round(Number(amount)));
+  if (hasDate) elements.receiptDateInput.value = date;
+
+  if (hasAmount && hasDate) {
+    setMessage(elements.receiptConfirmMessage, `${source}判定した金額と日付を入力しました。必ず確認してください。`);
+  } else if (hasAmount) {
+    setMessage(elements.receiptConfirmMessage, `${source}判定した金額を入力しました。日付も必ず確認してください。`);
+  } else if (hasDate) {
+    setMessage(elements.receiptConfirmMessage, `${source}判定した日付を入力しました。金額を入力して、必ず確認してください。`);
+  }
+
+  return hasAmount || hasDate;
+}
+
+async function requestReceiptDetailsFromApi(imageBlob) {
+  const endpoint = resolveReceiptOcrEndpoint();
+  if (!endpoint) {
+    throw new Error("レシートAI判定APIのURLが設定されていません。");
+  }
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      image: await blobToDataUrl(imageBlob),
+      today: todayIso(),
+    }),
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.error || "レシートAI判定APIを使えませんでした。");
+  }
+  return payload;
+}
+
 async function suggestReceiptDetails(imageBlob) {
   elements.receiptDateInput.value = todayIso();
+  elements.receiptConfirmMessage.textContent = "AI判定中です。";
 
+  try {
+    const result = await requestReceiptDetailsFromApi(imageBlob);
+    if (applyReceiptSuggestion(result, { source: "AI" })) return;
+    setMessage(elements.receiptConfirmMessage, "AI判定できませんでした。金額と日付を入力してください。");
+    return;
+  } catch (error) {
+    if (
+      isGithubPagesHost() &&
+      getStoredReceiptOcrEndpoint() &&
+      window.confirm("VercelのAI判定APIに接続できませんでした。URLを設定し直しますか？")
+    ) {
+      clearStoredReceiptOcrEndpoint();
+      try {
+        const result = await requestReceiptDetailsFromApi(imageBlob);
+        if (applyReceiptSuggestion(result, { source: "AI" })) return;
+      } catch {}
+    }
+    await suggestReceiptDetailsInBrowser(imageBlob);
+  }
+}
+
+async function suggestReceiptDetailsInBrowser(imageBlob) {
   if (!("TextDetector" in window) || !window.createImageBitmap) {
     setMessage(elements.receiptConfirmMessage, "AI判定を使えませんでした。金額と日付を確認して入力してください。");
     return;
@@ -1211,16 +1388,7 @@ async function suggestReceiptDetails(imageBlob) {
     const detectedText = (await detector.detect(imageBitmap)).map((item) => item.rawValue || "").join("\n");
     const amount = extractReceiptAmount(detectedText);
     const date = extractReceiptDate(detectedText);
-    if (amount) elements.receiptAmountInput.value = String(amount);
-    if (date) elements.receiptDateInput.value = date;
-
-    if (amount && date) {
-      setMessage(elements.receiptConfirmMessage, "AI判定した金額と日付を入力しました。必ず確認してください。");
-    } else if (amount) {
-      setMessage(elements.receiptConfirmMessage, "AI判定した金額を入力しました。日付も必ず確認してください。");
-    } else if (date) {
-      setMessage(elements.receiptConfirmMessage, "AI判定した日付を入力しました。金額を入力して、必ず確認してください。");
-    } else {
+    if (!applyReceiptSuggestion({ amount, date }, { source: "端末内AI" })) {
       setMessage(elements.receiptConfirmMessage, "AI判定できませんでした。金額と日付を入力してください。");
     }
   } catch {

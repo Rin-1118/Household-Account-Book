@@ -22,6 +22,26 @@ GitHub Pagesで公開した直後は、ページ側のキャッシュにより�
 
 JSONを書き出したファイルは、iCloud Drive、Google Drive、Dropbox、OneDriveなどのクラウドにも手動で保存できます。アプリから直接クラウドへ保存する場合は、各サービスのAPI認証を別途実装する必要があります。
 
+## レシートAI判定
+
+レシート撮影後の金額・日付判定は、Vercel Functionsの `api/receipt-ocr.js` からOpenAI APIへ画像を送って実行します。画面はGitHub Pagesのまま使い、AI判定APIだけVercelに置けます。
+
+Vercelにこのリポジトリをデプロイし、Project Settings → Environment Variables に次を設定してください。
+
+- `OPENAI_API_KEY`: OpenAI APIキー。ブラウザ側には置かないでください。
+- `OPENAI_RECEIPT_MODEL`: 任意。未設定時は `gpt-4.1-mini` を使います。
+- `RECEIPT_OCR_ALLOWED_ORIGIN`: GitHub PagesのURL。未設定でも動きますが、公開範囲を絞るなら設定してください。
+
+GitHub Pagesで初めてレシートAI判定を使うとき、VercelのAI判定API URLを聞かれます。Vercelの公開URLに `/api/receipt-ocr` を付けて入力してください。
+
+例:
+
+```text
+https://your-project.vercel.app/api/receipt-ocr
+```
+
+Vercel Functionsにはリクエストサイズ制限があるため、アプリ側で撮影画像をJPEGに圧縮してから送信します。AI判定結果は確認画面へ先に入力されますが、レシートの読み取り間違いがあり得るため、保存前に必ず人間の目で確認してください。
+
 ## 主な機能
 
 - 財布の残金表示
@@ -36,5 +56,6 @@ JSONを書き出したファイルは、iCloud Drive、Google Drive、Dropbox、
 - 収入・支出の円グラフ表示
 - スマホ幅対応
 - ホーム画面追加に対応するPWA設定
+- レシート撮影とAI判定による財布支出の確認入力
 - JSONエクスポート・インポート
 - GitHubリポジトリ内データ保存
