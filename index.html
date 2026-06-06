@@ -13,7 +13,17 @@
     <link rel="apple-touch-icon" href="./icons/icon-180.png">
     <link rel="stylesheet" href="./styles.css">
   </head>
-  <body>
+  <body class="auth-locked">
+    <section class="auth-lock" id="authLock" aria-labelledby="authTitle">
+      <div class="auth-lock__panel glass-panel">
+        <p class="kicker">Private ledger</p>
+        <h1 id="authTitle">Face IDで開く</h1>
+        <p class="auth-lock__text" id="authDescription">この家計簿を開くにはiPhoneのFace ID認証が必要です。</p>
+        <button class="primary-button auth-lock__button" id="authPrimaryButton" type="button">Face IDで開く</button>
+        <button class="ghost-button auth-lock__button" id="authResetButton" type="button" hidden>Face ID設定をやり直す</button>
+        <p class="auth-lock__message" id="authMessage" role="status" aria-live="polite"></p>
+      </div>
+    </section>
     <div class="app-shell">
       <header class="app-header glass-panel">
         <div>
@@ -31,7 +41,10 @@
           <div class="wallet-hero glass-panel">
             <span class="wallet-hero__label" id="walletHomeLabel">財布の残金</span>
             <strong id="walletHomeBalance">0円</strong>
-            <button class="primary-button wallet-hero__button" id="openWalletEntryButton" type="button">財布の入出金を入力</button>
+            <div class="wallet-hero__actions">
+              <button class="primary-button wallet-hero__button" id="captureReceiptButton" type="button">レシートを撮影</button>
+              <button class="ghost-button wallet-hero__button" id="openWalletEntryButton" type="button">財布の入出金を入力</button>
+            </div>
           </div>
         </section>
 
@@ -45,6 +58,7 @@
               <span>対象月</span>
               <input id="monthPicker" type="month" aria-label="対象月">
             </label>
+            <button class="danger-button reset-month-button" type="button" data-reset-month-button>この月をリセット</button>
           </div>
 
           <section class="current-balance-grid" aria-label="現在残高">
@@ -58,21 +72,21 @@
               <button class="mini-button" id="editWalletButton" type="button">編集</button>
             </article>
             <article class="balance-card">
-              <span class="balance-card__label" data-current-balance-label="account-1">口座1</span>
+              <span class="balance-card__label" data-current-balance-label="account-1">１ヶ月分（メイン）</span>
               <strong data-current-balance="account-1">0円</strong>
             </article>
             <article class="balance-card">
-              <span class="balance-card__label" data-current-balance-label="account-2">口座2</span>
+              <span class="balance-card__label" data-current-balance-label="account-2">貯金</span>
               <strong data-current-balance="account-2">0円</strong>
             </article>
           </section>
 
           <nav class="account-strip" aria-label="口座切替">
             <button class="account-tab is-active" type="button" data-account-button="account-1">
-              <span class="account-tab__label" data-account-label="account-1">口座1</span>
+              <span class="account-tab__label" data-account-label="account-1">１ヶ月分（メイン）</span>
             </button>
             <button class="account-tab" type="button" data-account-button="account-2">
-              <span class="account-tab__label" data-account-label="account-2">口座2</span>
+              <span class="account-tab__label" data-account-label="account-2">貯金</span>
             </button>
             <button class="ghost-button" id="editAccountsButton" type="button">口座を編集</button>
           </nav>
@@ -321,8 +335,12 @@
                 <p class="section-kicker">Monthly records</p>
                 <h2 id="transactionsTitle">この月の記録</h2>
               </div>
-              <button class="ghost-button" id="reflectFixedButton" type="button">固定収支を再確認</button>
+              <div class="transactions-actions">
+                <button class="danger-button" type="button" data-reset-month-button>この月をリセット</button>
+                <button class="ghost-button" id="reflectFixedButton" type="button">固定収支を再確認</button>
+              </div>
             </div>
+            <p class="form-message" id="monthlyMessage" role="status" aria-live="polite"></p>
             <div id="transactionList" class="transaction-list"></div>
           </section>
 
@@ -337,19 +355,19 @@
           <button class="icon-button" value="cancel" type="submit" aria-label="閉じる">x</button>
         </div>
         <label>
-          <span>口座1</span>
+          <span>１ヶ月分（メイン）</span>
           <input id="accountOneName" type="text" required>
         </label>
         <label>
-          <span>口座1の現在残高</span>
+          <span>１ヶ月分（メイン）の現在残高</span>
           <input id="accountOneBalance" type="number" inputmode="numeric" step="1" required>
         </label>
         <label>
-          <span>口座2</span>
+          <span>貯金</span>
           <input id="accountTwoName" type="text" required>
         </label>
         <label>
-          <span>口座2の現在残高</span>
+          <span>貯金の現在残高</span>
           <input id="accountTwoBalance" type="number" inputmode="numeric" step="1" required>
         </label>
         <label>
@@ -399,6 +417,52 @@
       </form>
     </dialog>
 
+    <dialog id="receiptCameraDialog" class="account-dialog receipt-dialog">
+      <form id="receiptCameraForm" method="dialog">
+        <div class="dialog-header">
+          <h2>レシートを撮影</h2>
+          <button class="icon-button" value="cancel" type="submit" formnovalidate aria-label="閉じる">x</button>
+        </div>
+        <div class="receipt-camera-frame">
+          <video id="receiptCameraVideo" autoplay playsinline muted></video>
+        </div>
+        <p class="form-message" id="receiptCameraMessage" role="status" aria-live="polite"></p>
+        <div class="dialog-actions">
+          <button class="ghost-button" value="cancel" type="submit" formnovalidate>キャンセル</button>
+          <button class="primary-button" id="takeReceiptPhotoButton" type="button">撮影する</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="receiptConfirmDialog" class="account-dialog receipt-dialog">
+      <form id="receiptConfirmForm" method="dialog">
+        <div class="dialog-header">
+          <h2>レシートを確認</h2>
+          <button class="icon-button" value="cancel" type="submit" formnovalidate aria-label="閉じる">x</button>
+        </div>
+        <figure class="receipt-preview">
+          <img id="receiptPreviewImage" alt="撮影したレシート">
+        </figure>
+        <label>
+          <span>財布から引き落とす金額</span>
+          <input id="receiptAmountInput" type="number" inputmode="numeric" min="1" step="1" placeholder="例: 1200" required>
+        </label>
+        <label>
+          <span>日付</span>
+          <input id="receiptDateInput" type="date" required>
+        </label>
+        <label>
+          <span>メモ</span>
+          <input id="receiptMemoInput" type="text" placeholder="例: コンビニ / 食費">
+        </label>
+        <p class="form-message" id="receiptConfirmMessage" role="status" aria-live="polite"></p>
+        <div class="dialog-actions">
+          <button class="ghost-button" value="cancel" type="submit" formnovalidate>キャンセル</button>
+          <button class="primary-button" id="saveReceiptExpenseButton" value="default" type="submit">確認して引き落とす</button>
+        </div>
+      </form>
+    </dialog>
+
     <dialog id="walletDialog" class="account-dialog">
       <form id="walletForm" method="dialog">
         <div class="dialog-header">
@@ -428,6 +492,150 @@
       }
     </script>
     <script src="./app.js"></script>
+    <script>
+      (() => {
+        const STORAGE_KEY = "dual-account-budget.v1";
+        const RESET_MESSAGE_KEY = "household-month-reset-message";
+
+        const ensureResetButton = (container, className = "") => {
+          if (!container || container.querySelector("[data-reset-month-button]")) return;
+          const button = document.createElement("button");
+          button.className = `danger-button ${className}`.trim();
+          button.type = "button";
+          button.dataset.resetMonthButton = "";
+          button.textContent = "この月をリセット";
+          container.append(button);
+        };
+
+        ensureResetButton(document.querySelector(".asset-topbar"), "reset-month-button");
+        ensureResetButton(document.querySelector(".transactions-actions"));
+
+        const message = window.sessionStorage.getItem(RESET_MESSAGE_KEY);
+        if (message) {
+          const target = document.querySelector("#monthlyMessage");
+          if (target) target.textContent = message;
+          window.sessionStorage.removeItem(RESET_MESSAGE_KEY);
+        }
+
+        const selectedMonth = () => document.querySelector("#monthPicker")?.value || new Date().toISOString().slice(0, 7);
+        const transactionMonth = (transaction) => transaction?.budgetMonth || String(transaction?.date || "").slice(0, 7);
+        const balanceDelta = (transaction) => {
+          if (transaction.type === "income" || transaction.type === "transfer-in") return Number(transaction.amount || 0);
+          if (transaction.type === "expense" || transaction.type === "transfer-out") return -Number(transaction.amount || 0);
+          return 0;
+        };
+        const walletDelta = (transaction) => (transaction.type === "income" ? Number(transaction.amount || 0) : -Number(transaction.amount || 0));
+        const formatMonth = (monthKey) => {
+          const [year, month] = String(monthKey).split("-");
+          return year && month ? `${year}/${Number(month)}` : monthKey;
+        };
+        const getResetPlan = (state, account, monthKey) => {
+          const accountTransactionIds = new Set();
+          const transferIds = new Set();
+          const walletTransferIds = new Set();
+          account.transactions.forEach((transaction) => {
+            if (transactionMonth(transaction) !== monthKey) return;
+            accountTransactionIds.add(transaction.id);
+            if ((transaction.source === "transfer" || transaction.source === "auto-transfer") && transaction.transferId) {
+              transferIds.add(transaction.transferId);
+            }
+            if (transaction.source === "wallet-transfer" && transaction.transferId) {
+              walletTransferIds.add(transaction.transferId);
+            }
+          });
+          const pairedTransferCount = state.accounts.reduce((count, targetAccount) => {
+            if (targetAccount.id === account.id) return count;
+            return count + targetAccount.transactions.filter((transaction) => transaction.transferId && transferIds.has(transaction.transferId)).length;
+          }, 0);
+          const walletTransactionCount = (state.walletTransactions || []).filter(
+            (transaction) => transaction.transferId && walletTransferIds.has(transaction.transferId),
+          ).length;
+
+          return {
+            accountTransactionIds,
+            transferIds,
+            walletTransferIds,
+            accountTransactionCount: accountTransactionIds.size,
+            pairedTransferCount,
+            walletTransactionCount,
+            clearsFixedSkips: Boolean(state.skippedRecurring?.[account.id]?.[monthKey]),
+            clearsTransferSkips: Boolean(state.skippedRecurringTransfers?.[monthKey]),
+          };
+        };
+        const resetConfirmMessage = (account, monthKey, plan) =>
+          [
+            `${account.name}の${formatMonth(monthKey)}の記録をリセットします。`,
+            "",
+            "削除・解除される対象:",
+            `- この口座のこの月の取引: ${plan.accountTransactionCount}件`,
+            `- 振込ペアの相手側記録: ${plan.pairedTransferCount}件`,
+            `- 財布入金と連動する財布側記録: ${plan.walletTransactionCount}件`,
+            `- 固定収支の再入力フラグ解除: ${plan.clearsFixedSkips ? "あり" : "なし"}`,
+            `- 自動振込の再入力フラグ解除: ${plan.clearsTransferSkips ? "あり" : "なし"}`,
+            "",
+            "残高に反映済みの記録は、削除と同時に残高も戻します。",
+            "この操作は元に戻せません。実行しますか？",
+          ].join("\n");
+
+        const resetMonthFallback = () => {
+          const raw = window.localStorage.getItem(STORAGE_KEY);
+          if (!raw) return;
+          const state = JSON.parse(raw);
+          const account = state.accounts?.find((item) => item.id === state.activeAccountId) || state.accounts?.[0];
+          const monthKey = selectedMonth();
+          if (!account || !monthKey) return;
+          const plan = getResetPlan(state, account, monthKey);
+          if (!window.confirm(resetConfirmMessage(account, monthKey, plan))) return;
+
+          let removed = 0;
+          state.accounts.forEach((targetAccount) => {
+            targetAccount.transactions = targetAccount.transactions.filter((transaction) => {
+              const selected = targetAccount.id === account.id && plan.accountTransactionIds.has(transaction.id);
+              const paired = transaction.transferId && plan.transferIds.has(transaction.transferId);
+              if (!selected && !paired) return true;
+              if (transaction.balanceImpactApplied) {
+                targetAccount.currentBalance = Number(targetAccount.currentBalance || 0) - balanceDelta(transaction);
+              }
+              if (selected) removed += 1;
+              return false;
+            });
+          });
+
+          state.walletTransactions = (state.walletTransactions || []).filter((transaction) => {
+            if (!transaction.transferId || !plan.walletTransferIds.has(transaction.transferId)) return true;
+            if (transaction.balanceImpactApplied) {
+              state.walletBalance = Number(state.walletBalance || 0) - walletDelta(transaction);
+            }
+            return false;
+          });
+
+          if (state.skippedRecurring?.[account.id]?.[monthKey]) {
+            delete state.skippedRecurring[account.id][monthKey];
+            if (!Object.keys(state.skippedRecurring[account.id]).length) delete state.skippedRecurring[account.id];
+          }
+          if (state.skippedRecurringTransfers?.[monthKey]) delete state.skippedRecurringTransfers[monthKey];
+
+          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+          window.sessionStorage.setItem(
+            RESET_MESSAGE_KEY,
+            removed ? `${formatMonth(monthKey)}の記録をリセットしました。` : `${formatMonth(monthKey)}にはリセットする記録がありません。`,
+          );
+          window.location.reload();
+        };
+
+        document.addEventListener(
+          "click",
+          (event) => {
+            const button = event.target.closest("[data-reset-month-button]");
+            if (!button || window.__householdSupportsMonthlyReset) return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            resetMonthFallback();
+          },
+          true,
+        );
+      })();
+    </script>
     <script>
       (() => {
         const form = document.querySelector("#transactionForm");

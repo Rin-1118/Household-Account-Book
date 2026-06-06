@@ -1,4 +1,4 @@
-const CACHE_NAME = "household-ledger-pwa-v15";
+const CACHE_NAME = "household-ledger-pwa-v17";
 const APP_ASSETS = [
   "./",
   "./index.html",
@@ -80,14 +80,7 @@ const RESET_HOTFIX_SCRIPT = `<script>
     const [year, month] = String(monthKey).split("-");
     return year && month ? year + "/" + Number(month) : monthKey;
   };
-  const resetMonth = () => {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    const state = JSON.parse(raw);
-    const account = state.accounts?.find((item) => item.id === state.activeAccountId) || state.accounts?.[0];
-    const monthKey = selectedMonth();
-    if (!account || !monthKey) return;
-    if (!window.confirm(account.name + "の" + monthLabel(monthKey) + "の記録をリセットします。")) return;
+  const getResetPlan = (state, account, monthKey) => {
     const accountTransactionIds = new Set();
     const transferIds = new Set();
     const walletTransferIds = new Set();
@@ -97,11 +90,49 @@ const RESET_HOTFIX_SCRIPT = `<script>
       if ((transaction.source === "transfer" || transaction.source === "auto-transfer") && transaction.transferId) transferIds.add(transaction.transferId);
       if (transaction.source === "wallet-transfer" && transaction.transferId) walletTransferIds.add(transaction.transferId);
     });
+    const pairedTransferCount = state.accounts.reduce((count, targetAccount) => {
+      if (targetAccount.id === account.id) return count;
+      return count + targetAccount.transactions.filter((transaction) => transaction.transferId && transferIds.has(transaction.transferId)).length;
+    }, 0);
+    const walletTransactionCount = (state.walletTransactions || []).filter((transaction) => transaction.transferId && walletTransferIds.has(transaction.transferId)).length;
+    return {
+      accountTransactionIds,
+      transferIds,
+      walletTransferIds,
+      accountTransactionCount: accountTransactionIds.size,
+      pairedTransferCount,
+      walletTransactionCount,
+      clearsFixedSkips: Boolean(state.skippedRecurring?.[account.id]?.[monthKey]),
+      clearsTransferSkips: Boolean(state.skippedRecurringTransfers?.[monthKey]),
+    };
+  };
+  const resetConfirmMessage = (account, monthKey, plan) => [
+    account.name + "の" + monthLabel(monthKey) + "の記録をリセットします。",
+    "",
+    "削除・解除される対象:",
+    "- この口座のこの月の取引: " + plan.accountTransactionCount + "件",
+    "- 振込ペアの相手側記録: " + plan.pairedTransferCount + "件",
+    "- 財布入金と連動する財布側記録: " + plan.walletTransactionCount + "件",
+    "- 固定収支の再入力フラグ解除: " + (plan.clearsFixedSkips ? "あり" : "なし"),
+    "- 自動振込の再入力フラグ解除: " + (plan.clearsTransferSkips ? "あり" : "なし"),
+    "",
+    "残高に反映済みの記録は、削除と同時に残高も戻します。",
+    "この操作は元に戻せません。実行しますか？",
+  ].join("\\n");
+  const resetMonth = () => {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const state = JSON.parse(raw);
+    const account = state.accounts?.find((item) => item.id === state.activeAccountId) || state.accounts?.[0];
+    const monthKey = selectedMonth();
+    if (!account || !monthKey) return;
+    const plan = getResetPlan(state, account, monthKey);
+    if (!window.confirm(resetConfirmMessage(account, monthKey, plan))) return;
     let removed = 0;
     state.accounts.forEach((targetAccount) => {
       targetAccount.transactions = targetAccount.transactions.filter((transaction) => {
-        const selected = targetAccount.id === account.id && accountTransactionIds.has(transaction.id);
-        const paired = transaction.transferId && transferIds.has(transaction.transferId);
+        const selected = targetAccount.id === account.id && plan.accountTransactionIds.has(transaction.id);
+        const paired = transaction.transferId && plan.transferIds.has(transaction.transferId);
         if (!selected && !paired) return true;
         if (transaction.balanceImpactApplied) targetAccount.currentBalance = Number(targetAccount.currentBalance || 0) - balanceDelta(transaction);
         if (selected) removed += 1;
@@ -109,7 +140,7 @@ const RESET_HOTFIX_SCRIPT = `<script>
       });
     });
     state.walletTransactions = (state.walletTransactions || []).filter((transaction) => {
-      if (!transaction.transferId || !walletTransferIds.has(transaction.transferId)) return true;
+      if (!transaction.transferId || !plan.walletTransferIds.has(transaction.transferId)) return true;
       if (transaction.balanceImpactApplied) state.walletBalance = Number(state.walletBalance || 0) - walletDelta(transaction);
       return false;
     });

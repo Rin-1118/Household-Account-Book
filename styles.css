@@ -10,6 +10,10 @@
   --line-strong: rgba(23, 33, 38, 0.12);
   --accent: #16776f;
   --accent-strong: #0e5d57;
+  --accent-hover: #188478;
+  --accent-strong-hover: #0d5a54;
+  --accent-rgb: 22, 119, 111;
+  --theme-background: linear-gradient(135deg, #e9fbff 0%, #f4f7ff 34%, #fff8ec 68%, #ecfff6 100%);
   --income: #218358;
   --expense: #bd4545;
   --warning: #b7791f;
@@ -24,6 +28,15 @@
     sans-serif;
 }
 
+body[data-account-theme="savings"] {
+  --accent: #426da8;
+  --accent-strong: #294f83;
+  --accent-hover: #4a76b5;
+  --accent-strong-hover: #244777;
+  --accent-rgb: 66, 109, 168;
+  --theme-background: linear-gradient(135deg, #edf7ff 0%, #f6f7ff 34%, #fff8ee 68%, #effbf6 100%);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -36,10 +49,10 @@ body {
   min-width: 320px;
   min-height: 100svh;
   margin: 0;
-  background:
-    linear-gradient(135deg, #e9fbff 0%, #f4f7ff 34%, #fff8ec 68%, #ecfff6 100%);
+  background: var(--theme-background);
   color: var(--ink);
   overflow-x: hidden;
+  transition: background 220ms ease;
   -webkit-text-size-adjust: 100%;
 }
 
@@ -54,6 +67,63 @@ body::before {
   background-size: 42px 42px;
   mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.72), transparent 78%);
   pointer-events: none;
+}
+
+body.auth-locked {
+  overflow: hidden;
+}
+
+body.auth-locked .app-shell {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.auth-lock {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.auth-lock__panel {
+  display: grid;
+  width: min(100%, 420px);
+  gap: 14px;
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+}
+
+.auth-lock__panel h1 {
+  font-size: 2rem;
+}
+
+.auth-lock__text,
+.auth-lock__message {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 800;
+  line-height: 1.65;
+}
+
+.auth-lock__message {
+  min-height: 24px;
+  font-size: 0.88rem;
+}
+
+.auth-lock__message.is-error {
+  color: var(--expense);
+}
+
+.auth-lock__button {
+  width: 100%;
+}
+
+.auth-lock__button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
 }
 
 button,
@@ -147,7 +217,7 @@ h3 {
 .page-tab.is-active {
   background: rgba(255, 255, 255, 0.78);
   color: var(--accent-strong);
-  box-shadow: 0 10px 24px rgba(22, 119, 111, 0.13), var(--inner-light);
+  box-shadow: 0 10px 24px rgba(var(--accent-rgb), 0.13), var(--inner-light);
 }
 
 .page[hidden] {
@@ -198,6 +268,12 @@ h3 {
   min-height: 54px;
 }
 
+.wallet-hero__actions {
+  display: grid;
+  width: min(100%, 320px);
+  gap: 10px;
+}
+
 .asset-topbar {
   display: flex;
   align-items: end;
@@ -237,8 +313,8 @@ select {
 
 input:focus,
 select:focus {
-  border-color: rgba(22, 119, 111, 0.68);
-  box-shadow: 0 0 0 3px rgba(22, 119, 111, 0.14), var(--inner-light);
+  border-color: rgba(var(--accent-rgb), 0.68);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.14), var(--inner-light);
 }
 
 .current-balance-grid {
@@ -253,7 +329,7 @@ select:focus {
   gap: 8px;
   min-height: 96px;
   position: relative;
-  border-left: 5px solid rgba(22, 119, 111, 0.34);
+  border-left: 5px solid rgba(var(--accent-rgb), 0.34);
   border-radius: 6px 18px 6px 6px;
   padding: 16px 16px 16px 18px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.36));
@@ -267,12 +343,12 @@ select:focus {
   width: 28px;
   height: 5px;
   border-radius: 999px;
-  background: rgba(22, 119, 111, 0.2);
+  background: rgba(var(--accent-rgb), 0.2);
 }
 
 .balance-card--total {
-  background: rgba(232, 250, 246, 0.68);
-  border-color: rgba(22, 119, 111, 0.74);
+  background: rgba(var(--accent-rgb), 0.12);
+  border-color: rgba(var(--accent-rgb), 0.74);
 }
 
 .balance-card__label {
@@ -311,6 +387,9 @@ select:focus {
 }
 
 .account-tab {
+  --tab-accent: var(--accent);
+  --tab-accent-strong: var(--accent-strong);
+  --tab-accent-rgb: var(--accent-rgb);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -327,22 +406,34 @@ select:focus {
   -webkit-backdrop-filter: blur(14px) saturate(130%);
 }
 
+.account-tab[data-account-button="account-1"] {
+  --tab-accent: #16776f;
+  --tab-accent-strong: #0e5d57;
+  --tab-accent-rgb: 22, 119, 111;
+}
+
+.account-tab[data-account-button="account-2"] {
+  --tab-accent: #426da8;
+  --tab-accent-strong: #294f83;
+  --tab-accent-rgb: 66, 109, 168;
+}
+
 .account-tab::before {
   content: "";
   flex: 0 0 auto;
   width: 10px;
   height: 10px;
   border-radius: 999px;
-  background: rgba(22, 119, 111, 0.38);
-  box-shadow: 0 0 0 4px rgba(22, 119, 111, 0.08);
+  background: rgba(var(--tab-accent-rgb), 0.42);
+  box-shadow: 0 0 0 4px rgba(var(--tab-accent-rgb), 0.08);
 }
 
 .account-tab::after {
   content: "切替";
   flex: 0 0 auto;
   border-radius: 999px;
-  background: rgba(22, 119, 111, 0.1);
-  color: var(--accent-strong);
+  background: rgba(var(--tab-accent-rgb), 0.1);
+  color: var(--tab-accent-strong);
   padding: 3px 8px;
   font-size: 0.72rem;
   font-weight: 900;
@@ -350,9 +441,9 @@ select:focus {
 
 .account-tab.is-active {
   border-color: transparent;
-  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  background: linear-gradient(135deg, var(--tab-accent), var(--tab-accent-strong));
   color: #fff;
-  box-shadow: 0 12px 28px rgba(22, 119, 111, 0.24), var(--inner-light);
+  box-shadow: 0 12px 28px rgba(var(--tab-accent-rgb), 0.24), var(--inner-light);
 }
 
 .account-tab.is-active::after {
@@ -400,14 +491,14 @@ select:focus {
 }
 
 .primary-button {
-  border-color: rgba(22, 119, 111, 0.74);
-  background: linear-gradient(135deg, #188478, #0f665f);
+  border-color: rgba(var(--accent-rgb), 0.74);
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
   color: #fff;
-  box-shadow: 0 14px 34px rgba(22, 119, 111, 0.22);
+  box-shadow: 0 14px 34px rgba(var(--accent-rgb), 0.22);
 }
 
 .primary-button:hover {
-  background: linear-gradient(135deg, #1a8d81, #0d5a54);
+  background: linear-gradient(135deg, var(--accent-hover), var(--accent-strong-hover));
 }
 
 .secondary-button {
@@ -506,6 +597,18 @@ select:focus {
   margin-bottom: 16px;
 }
 
+.transactions-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: end;
+  gap: 10px;
+}
+
+.reset-month-button {
+  align-self: end;
+  white-space: nowrap;
+}
+
 .entry-form,
 .fixed-form,
 .fixed-early-form,
@@ -564,8 +667,8 @@ select:focus {
 }
 
 .segmented-control input:checked + label {
-  border-color: rgba(22, 119, 111, 0.62);
-  background: rgba(232, 250, 246, 0.82);
+  border-color: rgba(var(--accent-rgb), 0.62);
+  background: rgba(var(--accent-rgb), 0.13);
   color: var(--accent-strong);
 }
 
@@ -761,7 +864,7 @@ canvas {
 }
 
 .badge.transfer {
-  background: rgba(232, 250, 246, 0.82);
+  background: rgba(var(--accent-rgb), 0.13);
   color: var(--accent-strong);
 }
 
@@ -778,6 +881,45 @@ canvas {
   width: min(440px, calc(100% - 32px));
   border-radius: var(--radius);
   color: var(--ink);
+}
+
+.receipt-dialog {
+  width: min(520px, calc(100% - 32px));
+}
+
+.receipt-camera-frame {
+  display: grid;
+  min-height: 300px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: #172126;
+}
+
+.receipt-camera-frame video {
+  display: block;
+  width: 100%;
+  max-height: 520px;
+  object-fit: contain;
+}
+
+.receipt-preview {
+  display: grid;
+  min-height: 220px;
+  place-items: center;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.receipt-preview img {
+  display: block;
+  width: 100%;
+  max-height: 360px;
+  object-fit: contain;
 }
 
 .account-dialog::backdrop {
@@ -936,6 +1078,10 @@ canvas {
   .dialog-header,
   .dialog-actions {
     align-items: stretch;
+    flex-direction: column;
+  }
+
+  .transactions-actions {
     flex-direction: column;
   }
 
