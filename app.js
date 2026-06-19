@@ -53,6 +53,13 @@ const elements = {
   receiptMemoInput: document.querySelector("#receiptMemoInput"),
   receiptConfirmMessage: document.querySelector("#receiptConfirmMessage"),
   openWalletEntryButton: document.querySelector("#openWalletEntryButton"),
+  openWalletStatementButton: document.querySelector("#openWalletStatementButton"),
+  walletStatementDialog: document.querySelector("#walletStatementDialog"),
+  walletStatementMonth: document.querySelector("#walletStatementMonth"),
+  walletStatementIncome: document.querySelector("#walletStatementIncome"),
+  walletStatementExpense: document.querySelector("#walletStatementExpense"),
+  walletStatementBalance: document.querySelector("#walletStatementBalance"),
+  walletStatementList: document.querySelector("#walletStatementList"),
   totalCurrentBalance: document.querySelector("#totalCurrentBalance"),
   walletBalanceLabel: document.querySelector("#walletBalanceLabel"),
   walletBalance: document.querySelector("#walletBalance"),
@@ -2319,6 +2326,63 @@ function openWalletEntryDialog() {
   elements.walletEntryDialog.showModal();
 }
 
+function walletStatementMethod(transaction) {
+  if (transaction.sourceType === "receipt") return "レシート";
+  if (transaction.sourceType === "account") return "口座から入金";
+  return transaction.type === "income" ? "その他から入金" : "財布から支出";
+}
+
+function renderWalletStatement() {
+  const monthKey = elements.walletStatementMonth.value || currentMonthKey();
+  const transactions = state.walletTransactions
+    .filter((transaction) => String(transaction.date || "").slice(0, 7) === monthKey)
+    .sort((a, b) => {
+      if (a.date !== b.date) return String(b.date || "").localeCompare(String(a.date || ""));
+      return String(b.createdAt || "").localeCompare(String(a.createdAt || ""));
+    });
+  const income = transactions
+    .filter((transaction) => transaction.type === "income")
+    .reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
+  const expense = transactions
+    .filter((transaction) => transaction.type === "expense")
+    .reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
+  const balance = income - expense;
+  elements.walletStatementIncome.textContent = formatYen(income);
+  elements.walletStatementExpense.textContent = formatYen(expense);
+  elements.walletStatementBalance.textContent = formatYen(balance);
+  elements.walletStatementBalance.classList.toggle("is-positive", balance > 0);
+  elements.walletStatementBalance.classList.toggle("is-negative", balance < 0);
+
+  if (!transactions.length) {
+    elements.walletStatementList.innerHTML = '<div class="empty-state">この月の財布の記録はありません。</div>';
+    return;
+  }
+
+  elements.walletStatementList.innerHTML = transactions
+    .map((transaction) => {
+      const isIncome = transaction.type === "income";
+      const sourceAccount = getAccountById(transaction.sourceAccountId);
+      const detail = transaction.sourceType === "account" && sourceAccount
+        ? sourceAccount.name
+        : transaction.memo || transaction.category || "詳細なし";
+      return `
+        <article class="wallet-statement-row">
+          <span class="transaction-date">${escapeHtml(formatShortDate(transaction.date))}</span>
+          <span class="badge ${isIncome ? "income" : "expense"}">${escapeHtml(walletStatementMethod(transaction))}</span>
+          <span class="wallet-statement-detail">${escapeHtml(detail)}</span>
+          <strong class="transaction-amount ${isIncome ? "income" : "expense"}">${isIncome ? "+" : "-"}${formatYen(transaction.amount)}</strong>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function openWalletStatementDialog() {
+  elements.walletStatementMonth.value = selectedMonth();
+  renderWalletStatement();
+  elements.walletStatementDialog.showModal();
+}
+
 function openWalletDialog() {
   elements.walletNameInput.value = state.walletName;
   elements.walletDirectInput.value = Math.round(Number(state.walletBalance || 0));
@@ -2439,6 +2503,8 @@ function init() {
   });
   elements.editAccountsButton.addEventListener("click", openAccountsDialog);
   elements.openWalletEntryButton.addEventListener("click", openWalletEntryDialog);
+  elements.openWalletStatementButton.addEventListener("click", openWalletStatementDialog);
+  elements.walletStatementMonth.addEventListener("change", renderWalletStatement);
   elements.editWalletButton.addEventListener("click", openWalletDialog);
   elements.accountsForm.addEventListener("submit", saveAccountNames);
   elements.walletForm.addEventListener("submit", saveWalletBalance);

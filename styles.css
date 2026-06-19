@@ -238,6 +238,11 @@ h3 {
   border-radius: var(--radius);
   padding: 48px 28px;
   text-align: center;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .wallet-hero__label {
@@ -373,6 +378,12 @@ select:focus {
 #totalCurrentBalance,
 #totalCurrentBalance.is-positive,
 #totalCurrentBalance.is-negative {
+  color: var(--ink);
+}
+
+.page--assets .balance-card strong,
+.page--assets .balance-card strong.is-positive,
+.page--assets .balance-card strong.is-negative {
   color: var(--ink);
 }
 
@@ -1066,6 +1077,58 @@ canvas {
   gap: 14px;
 }
 
+.wallet-statement-dialog {
+  width: min(680px, calc(100% - 32px));
+}
+
+.wallet-statement-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.wallet-statement-summary div {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.44);
+  padding: 12px;
+}
+
+.wallet-statement-summary span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.wallet-statement-summary strong {
+  color: var(--ink);
+  font-size: 1.15rem;
+}
+
+.wallet-statement-list {
+  display: grid;
+  gap: 8px;
+  max-height: min(48dvh, 420px);
+  overflow-y: auto;
+}
+
+.wallet-statement-row {
+  display: grid;
+  grid-template-columns: 58px 120px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border-bottom: 1px solid var(--line-strong);
+  padding: 10px 2px;
+}
+
+.wallet-statement-detail {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: 800;
+}
+
 .dialog-header,
 .dialog-actions {
   display: flex;
@@ -1283,6 +1346,27 @@ canvas {
     padding: 12px;
   }
 
+  .wallet-statement-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .wallet-statement-row {
+    grid-template-columns: 54px minmax(0, 1fr) auto;
+  }
+
+  .wallet-statement-row .badge {
+    grid-column: 2;
+  }
+
+  .wallet-statement-detail {
+    grid-column: 1 / 3;
+  }
+
+  .wallet-statement-row .transaction-amount {
+    grid-column: 3;
+    grid-row: 1 / 3;
+  }
+
   .transactions-header {
     align-items: stretch;
     flex-direction: column;
@@ -1357,14 +1441,6 @@ canvas {
     min-height: 0;
     height: 100%;
     overflow: hidden;
-  }
-
-  body[data-active-page="wallet"] .app-header {
-    padding: 10px 12px;
-  }
-
-  body[data-active-page="wallet"] .app-header > div:first-child {
-    display: none;
   }
 
   body[data-active-page="wallet"] .app-version {

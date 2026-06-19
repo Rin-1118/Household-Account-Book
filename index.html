@@ -33,7 +33,7 @@
         <nav class="page-nav" aria-label="ページ切替">
           <button class="page-tab is-active" type="button" data-page-button="wallet" aria-current="page">財布</button>
           <button class="page-tab" type="button" data-page-button="assets">All</button>
-          <button class="page-tab" type="button" data-page-button="monthly">月次</button>
+          <button class="page-tab" type="button" data-page-button="monthly">Balance</button>
         </nav>
       </header>
 
@@ -45,6 +45,7 @@
             <div class="wallet-hero__actions">
               <button class="primary-button wallet-hero__button" id="captureReceiptButton" type="button">レシートを撮影</button>
               <button class="ghost-button wallet-hero__button" id="openWalletEntryButton" type="button">財布の入出金を入力</button>
+              <button class="ghost-button wallet-hero__button" id="openWalletStatementButton" type="button">財布の収支を見る</button>
             </div>
           </div>
         </section>
@@ -347,7 +348,7 @@
 
         </section>
 
-        <section class="page page--monthly" id="monthlyPage" data-page="monthly" aria-label="月次" hidden>
+        <section class="page page--monthly" id="monthlyPage" data-page="monthly" aria-label="Balance" hidden>
           <div class="monthly-topbar glass-panel">
             <div>
               <p class="section-kicker">Monthly overview</p>
@@ -388,7 +389,7 @@
           </section>
         </section>
       </main>
-      <footer class="app-version" aria-label="アプリバージョン">v20</footer>
+      <footer class="app-version" aria-label="アプリバージョン">v21</footer>
     </div>
 
     <dialog id="accountsDialog" class="account-dialog">
@@ -456,6 +457,28 @@
         <div class="dialog-actions">
           <button class="ghost-button" value="cancel" type="submit" formnovalidate>キャンセル</button>
           <button class="primary-button" id="saveWalletEntryButton" value="default" type="submit">保存</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="walletStatementDialog" class="account-dialog wallet-statement-dialog">
+      <form method="dialog">
+        <div class="dialog-header">
+          <h2>財布の収支</h2>
+          <button class="icon-button" value="cancel" type="submit" aria-label="閉じる">x</button>
+        </div>
+        <label>
+          <span>対象月</span>
+          <input id="walletStatementMonth" type="month" aria-label="財布収支の対象月">
+        </label>
+        <section class="wallet-statement-summary" aria-label="財布の月別収支">
+          <div><span>入金</span><strong id="walletStatementIncome">0円</strong></div>
+          <div><span>出金</span><strong id="walletStatementExpense">0円</strong></div>
+          <div><span>増減</span><strong id="walletStatementBalance">0円</strong></div>
+        </section>
+        <div id="walletStatementList" class="wallet-statement-list"></div>
+        <div class="dialog-actions">
+          <button class="primary-button" value="cancel" type="submit">閉じる</button>
         </div>
       </form>
     </dialog>
