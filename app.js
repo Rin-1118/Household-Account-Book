@@ -27,6 +27,7 @@ const elements = {
   authResetButton: document.querySelector("#authResetButton"),
   authMessage: document.querySelector("#authMessage"),
   pageButtons: document.querySelectorAll("[data-page-button]"),
+  pageNav: document.querySelector(".page-nav"),
   walletPage: document.querySelector("#walletPage"),
   assetsPage: document.querySelector("#assetsPage"),
   monthlyPage: document.querySelector("#monthlyPage"),
@@ -1736,6 +1737,7 @@ function updatePageVisibility() {
     page.classList.toggle("is-active", isActive);
   });
   document.body.dataset.activePage = activePage;
+  elements.pageNav.style.setProperty("--page-position", String(PAGE_ORDER.indexOf(activePage)));
   elements.pageButtons.forEach((button) => {
     const isActive = button.dataset.pageButton === activePage;
     button.classList.toggle("is-active", isActive);
@@ -2211,6 +2213,10 @@ function setupPageSwipe() {
   let startX = 0;
   let startY = 0;
   let canSwipe = false;
+  const resetIndicator = () => {
+    elements.pageNav.classList.remove("is-swiping");
+    elements.pageNav.style.setProperty("--page-position", String(PAGE_ORDER.indexOf(activePage)));
+  };
   main.addEventListener(
     "touchstart",
     (event) => {
@@ -2218,22 +2224,45 @@ function setupPageSwipe() {
       if (!canSwipe || event.touches.length !== 1) return;
       startX = event.touches[0].clientX;
       startY = event.touches[0].clientY;
+      elements.pageNav.classList.add("is-swiping");
+    },
+    { passive: true },
+  );
+  main.addEventListener(
+    "touchmove",
+    (event) => {
+      if (!canSwipe || event.touches.length !== 1) return;
+      const deltaX = event.touches[0].clientX - startX;
+      const deltaY = event.touches[0].clientY - startY;
+      if (Math.abs(deltaX) < Math.abs(deltaY)) return;
+      const index = PAGE_ORDER.indexOf(activePage);
+      const progress = -deltaX / Math.max(1, main.clientWidth);
+      const position = Math.max(0, Math.min(PAGE_ORDER.length - 1, index + progress));
+      elements.pageNav.style.setProperty("--page-position", String(position));
     },
     { passive: true },
   );
   main.addEventListener(
     "touchend",
     (event) => {
-      if (!canSwipe || event.changedTouches.length !== 1) return;
+      if (!canSwipe || event.changedTouches.length !== 1) {
+        resetIndicator();
+        return;
+      }
       const deltaX = event.changedTouches[0].clientX - startX;
       const deltaY = event.changedTouches[0].clientY - startY;
-      if (Math.abs(deltaX) < 55 || Math.abs(deltaX) < Math.abs(deltaY) * 1.25) return;
+      if (Math.abs(deltaX) < 55 || Math.abs(deltaX) < Math.abs(deltaY) * 1.25) {
+        resetIndicator();
+        return;
+      }
       const index = PAGE_ORDER.indexOf(activePage);
       const nextIndex = deltaX < 0 ? Math.min(PAGE_ORDER.length - 1, index + 1) : Math.max(0, index - 1);
       if (nextIndex !== index) setActivePage(PAGE_ORDER[nextIndex]);
+      resetIndicator();
     },
     { passive: true },
   );
+  main.addEventListener("touchcancel", resetIndicator, { passive: true });
 }
 
 function render() {

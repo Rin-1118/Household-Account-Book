@@ -1,6 +1,6 @@
 :root {
   color-scheme: light;
-  --bg: #eef7fa;
+  --bg: #ffffff;
   --surface: rgba(255, 255, 255, 0.54);
   --surface-strong: rgba(255, 255, 255, 0.72);
   --surface-soft: rgba(255, 255, 255, 0.38);
@@ -13,7 +13,7 @@
   --accent-hover: #188478;
   --accent-strong-hover: #0d5a54;
   --accent-rgb: 22, 119, 111;
-  --theme-background: linear-gradient(135deg, #e9fbff 0%, #f4f7ff 34%, #fff8ec 68%, #ecfff6 100%);
+  --theme-background: #ffffff;
   --income: #218358;
   --expense: #bd4545;
   --warning: #b7791f;
@@ -48,16 +48,7 @@ body {
 }
 
 body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.34) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.28) 1px, transparent 1px);
-  background-size: 42px 42px;
-  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.72), transparent 78%);
-  pointer-events: none;
+  content: none;
 }
 
 body.auth-locked {
@@ -128,7 +119,7 @@ button {
 }
 
 .app-shell {
-  width: min(1180px, calc(100% - 32px));
+  width: min(1180px, calc(100% - 72px));
   margin: 0 auto;
   padding: 32px 0 64px;
 }
@@ -195,6 +186,7 @@ h3 {
 }
 
 .page-nav {
+  --page-position: 0;
   display: grid;
   grid-template-columns: repeat(3, minmax(82px, 1fr));
   gap: 8px;
@@ -202,6 +194,28 @@ h3 {
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.34);
   padding: 5px;
+  position: relative;
+  overflow: hidden;
+}
+
+.page-nav::before {
+  content: "";
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: 5px;
+  width: calc((100% - 26px) / 3);
+  border: 1px solid rgba(23, 33, 38, 0.08);
+  border-radius: var(--radius);
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(23, 33, 38, 0.11), var(--inner-light);
+  transform: translateX(calc(var(--page-position) * (100% + 8px)));
+  transition: transform 220ms ease;
+  pointer-events: none;
+}
+
+.page-nav.is-swiping::before {
+  transition: none;
 }
 
 .page-tab {
@@ -211,12 +225,14 @@ h3 {
   background: transparent;
   color: var(--muted);
   font-weight: 900;
+  position: relative;
+  z-index: 1;
 }
 
 .page-tab.is-active {
-  background: rgba(255, 255, 255, 0.78);
+  background: transparent;
   color: var(--ink);
-  box-shadow: 0 10px 24px rgba(var(--accent-rgb), 0.13), var(--inner-light);
+  box-shadow: none;
 }
 
 .page[hidden] {
@@ -318,8 +334,15 @@ label {
 }
 
 .month-control {
-  min-width: min(230px, 100%);
+  width: min(230px, 100%);
+  min-width: 0;
+  max-width: 100%;
   cursor: pointer;
+}
+
+input[type="month"] {
+  min-width: 0;
+  max-width: 100%;
 }
 
 input,
@@ -356,7 +379,7 @@ select:focus {
   border-left: 5px solid rgba(var(--accent-rgb), 0.34);
   border-radius: 6px 18px 6px 6px;
   padding: 16px 16px 16px 18px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.36));
+  background: #ffffff;
 }
 
 .balance-card::before {
@@ -391,7 +414,7 @@ select:focus {
 .page--assets[data-account-theme="savings"] .panel,
 .page--assets[data-account-theme="savings"] .active-account-banner {
   border-color: rgba(66, 109, 168, 0.34);
-  background: linear-gradient(135deg, rgba(234, 244, 255, 0.72), rgba(255, 255, 255, 0.42));
+  background: #f3f8ff;
 }
 
 .page--assets[data-account-theme="savings"] .balance-card::before {
@@ -1189,8 +1212,16 @@ canvas {
   }
 
   .app-shell {
-    width: min(100% - 24px, 1180px);
+    width: min(calc(100% - 72px), 1180px);
     padding: max(12px, env(safe-area-inset-top)) 0 max(32px, env(safe-area-inset-bottom));
+  }
+
+  .page-nav {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .month-control {
+    width: 100%;
   }
 
   .app-header,
@@ -1454,4 +1485,15 @@ canvas {
   }
 
   .page-nav { gap: 4px; }
+
+  .page-nav::before {
+    width: calc((100% - 18px) / 3);
+    transform: translateX(calc(var(--page-position) * (100% + 4px)));
+  }
+}
+
+body .page--assets .balance-card strong,
+body .page--assets .balance-card strong.is-positive,
+body .page--assets .balance-card strong.is-negative {
+  color: #000000 !important;
 }
