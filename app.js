@@ -9,6 +9,7 @@ const RECEIPT_OCR_ENDPOINT_KEY = "household-receipt-ocr-endpoint.v1";
 const DEFAULT_RECEIPT_OCR_ENDPOINT = "/api/receipt-ocr";
 const RECEIPT_IMAGE_MAX_SIDE = 1600;
 const RECEIPT_IMAGE_TARGET_BYTES = 2_500_000;
+const PAGE_ORDER = ["wallet", "assets", "monthly"];
 const DEFAULT_ACCOUNT_NAMES = {
   "account-1": "１ヶ月分（メイン）",
   "account-2": "貯金",
@@ -28,8 +29,14 @@ const elements = {
   pageButtons: document.querySelectorAll("[data-page-button]"),
   walletPage: document.querySelector("#walletPage"),
   assetsPage: document.querySelector("#assetsPage"),
+  monthlyPage: document.querySelector("#monthlyPage"),
   monthControl: document.querySelector(".month-control"),
   monthPicker: document.querySelector("#monthPicker"),
+  monthlyMonthPicker: document.querySelector("#monthlyMonthPicker"),
+  monthlyIncomeTotal: document.querySelector("#monthlyIncomeTotal"),
+  monthlyExpenseTotal: document.querySelector("#monthlyExpenseTotal"),
+  monthlyBalanceTotal: document.querySelector("#monthlyBalanceTotal"),
+  monthlyLedgerList: document.querySelector("#monthlyLedgerList"),
   walletHomeLabel: document.querySelector("#walletHomeLabel"),
   walletHomeBalance: document.querySelector("#walletHomeBalance"),
   captureReceiptButton: document.querySelector("#captureReceiptButton"),
@@ -130,7 +137,7 @@ const yenFormatter = new Intl.NumberFormat("ja-JP", {
   maximumFractionDigits: 0,
 });
 
-let activePage = window.location.hash === "#assets" ? "assets" : "wallet";
+let activePage = pageFromHash();
 let state = loadState();
 let dueBalanceTimerId = null;
 let receiptPreviewUrl = "";
@@ -492,6 +499,12 @@ function formatMonthLabel(monthKey) {
 
 function selectedMonth() {
   return elements.monthPicker.value || currentMonthKey();
+}
+
+function pageFromHash() {
+  const page = window.location.hash.replace(/^#/, "");
+  if (page === "all") return "assets";
+  return PAGE_ORDER.includes(page) ? page : "wallet";
 }
 
 function getActiveAccount() {
@@ -1710,11 +1723,12 @@ function formatShortDate(date) {
 }
 
 function updatePageVisibility() {
-  const isAssetsPage = activePage === "assets";
-  elements.walletPage.hidden = isAssetsPage;
-  elements.assetsPage.hidden = !isAssetsPage;
-  elements.walletPage.classList.toggle("is-active", !isAssetsPage);
-  elements.assetsPage.classList.toggle("is-active", isAssetsPage);
+  [elements.walletPage, elements.assetsPage, elements.monthlyPage].forEach((page) => {
+    const isActive = page.dataset.page === activePage;
+    page.hidden = !isActive;
+    page.classList.toggle("is-active", isActive);
+  });
+  document.body.dataset.activePage = activePage;
   elements.pageButtons.forEach((button) => {
     const isActive = button.dataset.pageButton === activePage;
     button.classList.toggle("is-active", isActive);
@@ -1727,8 +1741,8 @@ function updatePageVisibility() {
 }
 
 function setActivePage(page) {
-  activePage = page === "assets" ? "assets" : "wallet";
-  window.location.hash = activePage === "assets" ? "assets" : "";
+  activePage = PAGE_ORDER.includes(page) ? page : "wallet";
+  window.location.hash = activePage === "wallet" ? "" : activePage;
   updatePageVisibility();
   renderCharts(getActiveAccount());
 }
@@ -1762,7 +1776,7 @@ function updateActiveAccountBanner(account) {
 }
 
 function updateAccountTheme(account) {
-  document.body.dataset.accountTheme = account.id === "account-2" ? "savings" : "main";
+  elements.assetsPage.dataset.accountTheme = account.id === "account-2" ? "savings" : "main";
 }
 
 function updateAccountStrip() {
@@ -2055,6 +2069,166 @@ function renderTransactions(account) {
     .join("");
 }
 
+function collectMonthlyLedger(monthKey = selectedMonth()) {
+  const entries = [];
+  const handledTransfers = new Set();
+
+  state.accounts.forEach((account) => {
+    getMonthlyTransactions(account, monthKey).forEach((transaction) => {
+      const amount = Number(transaction.amount || 0);
+      const transferId = transaction.transferId || "";
+      const isTransfer = transaction.type === "transfer-in" || transaction.type === "transfer-out";
+
+      if (isTransfer && transferId) {
+        if (handledTransfers.has(transferId)) return;
+        handledTransfers.add(transferId);
+        const peer = getAccountById(transaction.transferPeerAccountId);
+        const isWalletTransfer = transaction.source === "wallet-transfer" || transaction.transferPeerAccountId === "wallet";
+        const isOutgoing = transaction.type === "transfer-out";
+        entries.push({
+          date: transaction.date || "",
+          createdAt: transaction.createdAt || "",
+          method: isWalletTransfer ? "財布移動" : transaction.source === "auto-transfer" ? "自動振込" : "口座振込",
+          from: isWalletTransfer ? account.name : isOutgoing ? account.name : peer?.name || "不明",
+          to: isWalletTransfer ? state.walletName : isOutgoing ? peer?.name || "不明" : account.name,
+          amount,
+          flow: "transfer",
+          note: transaction.memo || transaction.category || "",
+        });
+        return;
+      }
+
+      if (isTransfer) return;
+      const isIncome = transaction.type === "income";
+      entries.push({
+        date: transaction.date || "",
+        createdAt: transaction.createdAt || "",
+        method: transaction.source === "recurring" ? (isIncome ? "固定収入" : "固定支出") : "口座入力",
+        from: isIncome ? "外部（入金元未指定）" : account.name,
+        to: isIncome ? account.name : "外部（支払先未指定）",
+        amount,
+        flow: isIncome ? "income" : "expense",
+        note: [transaction.category, transaction.memo].filter(Boolean).join(" / "),
+      });
+    });
+  });
+
+  state.walletTransactions
+    .filter((transaction) => String(transaction.date || "").slice(0, 7) === monthKey)
+    .forEach((transaction) => {
+      if (transaction.transferId && handledTransfers.has(transaction.transferId)) return;
+      if (transaction.transferId) handledTransfers.add(transaction.transferId);
+      const isIncome = transaction.type === "income";
+      const sourceAccount = getAccountById(transaction.sourceAccountId);
+      entries.push({
+        date: transaction.date || "",
+        createdAt: transaction.createdAt || "",
+        method: transaction.sourceType === "receipt" ? "レシート" : transaction.sourceType === "account" ? "財布移動" : "財布入力",
+        from: isIncome ? sourceAccount?.name || "その他" : state.walletName,
+        to: isIncome ? state.walletName : "外部（支払先未指定）",
+        amount: Number(transaction.amount || 0),
+        flow: transaction.sourceType === "account" ? "transfer" : isIncome ? "income" : "expense",
+        note: transaction.memo || transaction.category || "",
+      });
+    });
+
+  return entries.sort((a, b) => {
+    if (a.date !== b.date) return b.date.localeCompare(a.date);
+    return b.createdAt.localeCompare(a.createdAt);
+  });
+}
+
+function renderMonthlyOverview() {
+  const entries = collectMonthlyLedger();
+  const income = entries.filter((entry) => entry.flow === "income").reduce((sum, entry) => sum + entry.amount, 0);
+  const expense = entries.filter((entry) => entry.flow === "expense").reduce((sum, entry) => sum + entry.amount, 0);
+  const balance = income - expense;
+  elements.monthlyIncomeTotal.textContent = formatYen(income);
+  elements.monthlyExpenseTotal.textContent = formatYen(expense);
+  elements.monthlyBalanceTotal.textContent = formatYen(balance);
+  elements.monthlyBalanceTotal.classList.toggle("is-positive", balance > 0);
+  elements.monthlyBalanceTotal.classList.toggle("is-negative", balance < 0);
+
+  if (!entries.length) {
+    elements.monthlyLedgerList.innerHTML = '<div class="empty-state">この月のお金の動きはまだありません。</div>';
+    return;
+  }
+
+  elements.monthlyLedgerList.innerHTML = entries
+    .map(
+      (entry) => `
+        <article class="monthly-ledger-row monthly-ledger-row--${entry.flow}">
+          <span class="transaction-date">${escapeHtml(formatShortDate(entry.date))}</span>
+          <span class="badge ${entry.flow}">${escapeHtml(entry.method)}</span>
+          <span class="movement-place">${escapeHtml(entry.from)}</span>
+          <span class="movement-arrow" aria-hidden="true">→</span>
+          <span class="movement-place">${escapeHtml(entry.to)}</span>
+          <span class="transaction-amount ${entry.flow}">${formatYen(entry.amount)}</span>
+          ${entry.note ? `<span class="transaction-note monthly-ledger-note">${escapeHtml(entry.note)}</span>` : ""}
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function setPanelCollapsed(panel, collapsed) {
+  const header = panel.querySelector(":scope > .panel-header");
+  panel.classList.toggle("is-collapsed", collapsed);
+  panel.querySelectorAll(":scope > :not(.panel-header)").forEach((child) => {
+    child.hidden = collapsed;
+  });
+  const button = header?.querySelector("[data-panel-toggle]");
+  if (!button) return;
+  button.setAttribute("aria-expanded", String(!collapsed));
+  button.textContent = collapsed ? "+" : "−";
+  button.title = collapsed ? "開く" : "閉じる";
+}
+
+function setupPanelToggles() {
+  document.querySelectorAll("[data-collapsible]").forEach((panel) => {
+    const header = panel.querySelector(":scope > .panel-header");
+    if (!header || header.querySelector("[data-panel-toggle]")) return;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "panel-toggle";
+    button.dataset.panelToggle = "";
+    button.setAttribute("aria-label", "パネルを開閉");
+    button.addEventListener("click", () => setPanelCollapsed(panel, !panel.classList.contains("is-collapsed")));
+    header.append(button);
+    setPanelCollapsed(panel, panel.hasAttribute("data-collapsed"));
+  });
+}
+
+function setupPageSwipe() {
+  const main = document.querySelector("main");
+  let startX = 0;
+  let startY = 0;
+  let canSwipe = false;
+  main.addEventListener(
+    "touchstart",
+    (event) => {
+      canSwipe = !event.target.closest("input, select, textarea, button, canvas, dialog");
+      if (!canSwipe || event.touches.length !== 1) return;
+      startX = event.touches[0].clientX;
+      startY = event.touches[0].clientY;
+    },
+    { passive: true },
+  );
+  main.addEventListener(
+    "touchend",
+    (event) => {
+      if (!canSwipe || event.changedTouches.length !== 1) return;
+      const deltaX = event.changedTouches[0].clientX - startX;
+      const deltaY = event.changedTouches[0].clientY - startY;
+      if (Math.abs(deltaX) < 55 || Math.abs(deltaX) < Math.abs(deltaY) * 1.25) return;
+      const index = PAGE_ORDER.indexOf(activePage);
+      const nextIndex = deltaX < 0 ? Math.min(PAGE_ORDER.length - 1, index + 1) : Math.max(0, index - 1);
+      if (nextIndex !== index) setActivePage(PAGE_ORDER[nextIndex]);
+    },
+    { passive: true },
+  );
+}
+
 function render() {
   const account = getActiveAccount();
   updateAccountTheme(account);
@@ -2074,6 +2248,7 @@ function render() {
   renderAutoTransfers();
   renderCharts(account);
   renderTransactions(account);
+  renderMonthlyOverview();
 
   if (!elements.dateInput.value || !elements.dateInput.value.startsWith(selectedMonth())) {
     setDefaultInputDate();
@@ -2205,6 +2380,7 @@ function init() {
   window.__householdSupportsMonthlyReset = true;
   window.__householdSupportsDueDateSync = true;
   elements.monthPicker.value = currentMonthKey();
+  elements.monthlyMonthPicker.value = elements.monthPicker.value;
   setDefaultInputDate();
   setDefaultTransferDate();
   setDefaultWalletEntryDate();
@@ -2212,6 +2388,8 @@ function init() {
   applyDueBalanceImpacts();
   saveState();
   render();
+  setupPanelToggles();
+  setupPageSwipe();
 
   document.querySelector(".page-nav").addEventListener("click", handlePageChange);
   document.querySelector(".account-strip").addEventListener("click", handleAccountChange);
@@ -2238,11 +2416,19 @@ function init() {
   elements.transactionList.addEventListener("click", handleTransactionListClick);
   elements.resetMonthButtons.forEach((button) => button.addEventListener("click", resetSelectedMonth));
   elements.monthPicker.addEventListener("change", () => {
+    elements.monthlyMonthPicker.value = elements.monthPicker.value;
     const inserted = generateScheduledForMonth(selectedMonth());
     saveState();
     setDefaultInputDate();
     setDefaultTransferDate();
     if (inserted) setMessage(elements.fixedMessage, "この月の自動入力を反映しました。");
+    render();
+  });
+  elements.monthlyMonthPicker.addEventListener("change", () => {
+    elements.monthPicker.value = elements.monthlyMonthPicker.value || currentMonthKey();
+    const inserted = generateScheduledForMonth(selectedMonth());
+    saveState();
+    if (inserted) setMessage(elements.monthlyMessage, "この月の自動入力を反映しました。");
     render();
   });
   elements.reflectFixedButton.addEventListener("click", () => {
@@ -2257,7 +2443,7 @@ function init() {
   elements.accountsForm.addEventListener("submit", saveAccountNames);
   elements.walletForm.addEventListener("submit", saveWalletBalance);
   window.addEventListener("hashchange", () => {
-    activePage = window.location.hash === "#assets" ? "assets" : "wallet";
+    activePage = pageFromHash();
     render();
   });
   window.addEventListener("focus", () => syncDueBalanceImpacts({ announce: true }));

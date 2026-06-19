@@ -2,7 +2,7 @@
 <html lang="ja">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>家計簿</title>
     <meta name="theme-color" content="#eef7fa">
     <meta name="application-name" content="家計簿">
@@ -32,7 +32,8 @@
         </div>
         <nav class="page-nav" aria-label="ページ切替">
           <button class="page-tab is-active" type="button" data-page-button="wallet" aria-current="page">財布</button>
-          <button class="page-tab" type="button" data-page-button="assets">総資産</button>
+          <button class="page-tab" type="button" data-page-button="assets">All</button>
+          <button class="page-tab" type="button" data-page-button="monthly">月次</button>
         </nav>
       </header>
 
@@ -48,11 +49,11 @@
           </div>
         </section>
 
-        <section class="page page--assets" id="assetsPage" data-page="assets" aria-label="総資産" hidden>
+        <section class="page page--assets" id="assetsPage" data-page="assets" aria-label="All" hidden>
           <div class="asset-topbar glass-panel">
             <div>
               <p class="section-kicker">Asset overview</p>
-              <h2>総資産</h2>
+              <h2>All</h2>
             </div>
             <label class="month-control">
               <span>対象月</span>
@@ -124,7 +125,7 @@
           </section>
 
           <section class="work-grid">
-            <section class="panel quick-entry" aria-labelledby="entryTitle">
+            <section class="panel quick-entry" aria-labelledby="entryTitle" data-collapsible>
               <div class="panel-header">
                 <div>
                   <p class="section-kicker">Quick entry</p>
@@ -173,7 +174,7 @@
               </form>
             </section>
 
-            <section class="panel fixed-panel" aria-labelledby="fixedTitle">
+            <section class="panel fixed-panel" aria-labelledby="fixedTitle" data-collapsible data-collapsed>
               <div class="panel-header">
                 <div>
                   <p class="section-kicker">Monthly recurring records</p>
@@ -236,7 +237,7 @@
               <div class="fixed-list" id="fixedCostList"></div>
             </section>
 
-            <section class="panel transfer-panel" aria-labelledby="transferTitle">
+            <section class="panel transfer-panel" aria-labelledby="transferTitle" data-collapsible data-collapsed>
               <div class="panel-header">
                 <div>
                   <p class="section-kicker">Account transfer</p>
@@ -303,7 +304,7 @@
           </section>
 
           <section class="chart-grid" aria-label="内訳グラフ">
-            <section class="panel chart-panel" aria-labelledby="incomeChartTitle">
+            <section class="panel chart-panel" aria-labelledby="incomeChartTitle" data-collapsible data-collapsed>
               <div class="panel-header">
                 <div>
                   <p class="section-kicker">Income breakdown</p>
@@ -315,7 +316,7 @@
                 <div class="legend" id="incomeLegend"></div>
               </div>
             </section>
-            <section class="panel chart-panel" aria-labelledby="expenseChartTitle">
+            <section class="panel chart-panel" aria-labelledby="expenseChartTitle" data-collapsible data-collapsed>
               <div class="panel-header">
                 <div>
                   <p class="section-kicker">Expense breakdown</p>
@@ -329,7 +330,7 @@
             </section>
           </section>
 
-          <section class="panel transactions-panel" aria-labelledby="transactionsTitle">
+          <section class="panel transactions-panel" aria-labelledby="transactionsTitle" data-collapsible data-collapsed>
             <div class="panel-header transactions-header">
               <div>
                 <p class="section-kicker">Monthly records</p>
@@ -345,8 +346,49 @@
           </section>
 
         </section>
+
+        <section class="page page--monthly" id="monthlyPage" data-page="monthly" aria-label="月次" hidden>
+          <div class="monthly-topbar glass-panel">
+            <div>
+              <p class="section-kicker">Monthly overview</p>
+              <h2>その月のお金の動き</h2>
+            </div>
+            <label class="month-control">
+              <span>対象月</span>
+              <input id="monthlyMonthPicker" type="month" aria-label="月次ページの対象月">
+            </label>
+          </div>
+
+          <section class="monthly-summary" aria-label="全体の月次サマリー">
+            <article class="summary-card">
+              <span class="summary-card__label">外部からの収入</span>
+              <strong id="monthlyIncomeTotal">0円</strong>
+            </article>
+            <article class="summary-card">
+              <span class="summary-card__label">外部への支出</span>
+              <strong id="monthlyExpenseTotal">0円</strong>
+            </article>
+            <article class="summary-card monthly-balance-card">
+              <span class="summary-card__label">その月の収支</span>
+              <strong id="monthlyBalanceTotal">0円</strong>
+            </article>
+          </section>
+
+          <section class="panel monthly-ledger-panel" aria-labelledby="monthlyLedgerTitle">
+            <div class="panel-header">
+              <div>
+                <p class="section-kicker">All movements</p>
+                <h2 id="monthlyLedgerTitle">財布・口座をまとめた記録</h2>
+              </div>
+            </div>
+            <div class="monthly-ledger-head" aria-hidden="true">
+              <span>日付</span><span>方式</span><span>移動元</span><span>移動先</span><span>金額</span>
+            </div>
+            <div id="monthlyLedgerList" class="monthly-ledger-list"></div>
+          </section>
+        </section>
       </main>
-      <footer class="app-version" aria-label="アプリバージョン">v17</footer>
+      <footer class="app-version" aria-label="アプリバージョン">v20</footer>
     </div>
 
     <dialog id="accountsDialog" class="account-dialog">
