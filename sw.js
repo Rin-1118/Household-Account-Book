@@ -1,4 +1,4 @@
-const CACHE_NAME = "household-ledger-pwa-v23";
+const CACHE_NAME = "household-ledger-pwa-v24";
 const APP_ASSETS = [
   "./",
   "./index.html",
@@ -18,12 +18,12 @@ const RESET_HOTFIX_SCRIPT = `<script>
   const MESSAGE_KEY = "household-month-reset-message";
   const THEME_STYLE_ID = "household-account-theme-hotfix";
   const THEME_CSS =
-    "body[data-account-theme='savings']{background:linear-gradient(135deg,#edf7ff 0%,#f6f7ff 34%,#fff8ee 68%,#effbf6 100%);}" +
+    "body[data-account-theme='savings']{background:#fff;}" +
     "body[data-account-theme='savings'] .page-tab.is-active{color:#294f83;box-shadow:0 10px 24px rgba(66,109,168,.13),inset 0 1px 0 rgba(255,255,255,.76);}" +
     "body[data-account-theme='savings'] input:focus,body[data-account-theme='savings'] select:focus{border-color:rgba(66,109,168,.68);box-shadow:0 0 0 3px rgba(66,109,168,.14),inset 0 1px 0 rgba(255,255,255,.76);}" +
-    "body[data-account-theme='savings'] .balance-card{border-left-color:rgba(66,109,168,.34);}" +
+    "body[data-account-theme='savings'] .balance-card{border-left-color:rgba(66,109,168,.34);background:#fff;}" +
     "body[data-account-theme='savings'] .balance-card::before{background:rgba(66,109,168,.2);}" +
-    "body[data-account-theme='savings'] .balance-card--total{background:rgba(66,109,168,.12);border-color:rgba(66,109,168,.74);}" +
+    "body[data-account-theme='savings'] .balance-card--total{background:#fff;border-color:rgba(66,109,168,.74);}" +
     "body[data-account-theme='savings'] .account-tab::before{background:rgba(66,109,168,.42);box-shadow:0 0 0 4px rgba(66,109,168,.08);}" +
     "body[data-account-theme='savings'] .account-tab::after{background:rgba(66,109,168,.1);color:#294f83;}" +
     "body[data-account-theme='savings'] .account-tab.is-active{background:linear-gradient(135deg,#426da8,#294f83);box-shadow:0 12px 28px rgba(66,109,168,.24),inset 0 1px 0 rgba(255,255,255,.76);}" +

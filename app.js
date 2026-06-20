@@ -1730,6 +1730,14 @@ function formatShortDate(date) {
   return month && day ? `${Number(month)}/${Number(day)}` : date;
 }
 
+function updatePageNavIndicator(position) {
+  const firstButton = elements.pageButtons[0];
+  if (!firstButton) return;
+  const gap = Number.parseFloat(getComputedStyle(elements.pageNav).columnGap) || 0;
+  const step = firstButton.getBoundingClientRect().width + gap;
+  elements.pageNav.style.setProperty("--page-offset", `${position * step}px`);
+}
+
 function updatePageVisibility() {
   [elements.walletPage, elements.assetsPage, elements.monthlyPage].forEach((page) => {
     const isActive = page.dataset.page === activePage;
@@ -1737,7 +1745,7 @@ function updatePageVisibility() {
     page.classList.toggle("is-active", isActive);
   });
   document.body.dataset.activePage = activePage;
-  elements.pageNav.style.setProperty("--page-position", String(PAGE_ORDER.indexOf(activePage)));
+  updatePageNavIndicator(PAGE_ORDER.indexOf(activePage));
   elements.pageButtons.forEach((button) => {
     const isActive = button.dataset.pageButton === activePage;
     button.classList.toggle("is-active", isActive);
@@ -2215,7 +2223,11 @@ function setupPageSwipe() {
   let canSwipe = false;
   const resetIndicator = () => {
     elements.pageNav.classList.remove("is-swiping");
-    elements.pageNav.style.setProperty("--page-position", String(PAGE_ORDER.indexOf(activePage)));
+    updatePageNavIndicator(PAGE_ORDER.indexOf(activePage));
+  };
+  const vibrateOnPageChange = () => {
+    if (typeof navigator.vibrate !== "function") return;
+    navigator.vibrate(10);
   };
   main.addEventListener(
     "touchstart",
@@ -2238,7 +2250,7 @@ function setupPageSwipe() {
       const index = PAGE_ORDER.indexOf(activePage);
       const progress = -deltaX / Math.max(1, main.clientWidth);
       const position = Math.max(0, Math.min(PAGE_ORDER.length - 1, index + progress));
-      elements.pageNav.style.setProperty("--page-position", String(position));
+      updatePageNavIndicator(position);
     },
     { passive: true },
   );
@@ -2257,7 +2269,10 @@ function setupPageSwipe() {
       }
       const index = PAGE_ORDER.indexOf(activePage);
       const nextIndex = deltaX < 0 ? Math.min(PAGE_ORDER.length - 1, index + 1) : Math.max(0, index - 1);
-      if (nextIndex !== index) setActivePage(PAGE_ORDER[nextIndex]);
+      if (nextIndex !== index) {
+        setActivePage(PAGE_ORDER[nextIndex]);
+        vibrateOnPageChange();
+      }
       resetIndicator();
     },
     { passive: true },
@@ -2545,7 +2560,10 @@ function init() {
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) syncDueBalanceImpacts({ announce: true });
   });
-  window.addEventListener("resize", () => renderCharts(getActiveAccount()));
+  window.addEventListener("resize", () => {
+    updatePageNavIndicator(PAGE_ORDER.indexOf(activePage));
+    renderCharts(getActiveAccount());
+  });
   scheduleDueBalanceCheck();
 }
 

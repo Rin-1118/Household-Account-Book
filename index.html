@@ -58,7 +58,9 @@
             </div>
             <label class="month-control">
               <span>対象月</span>
-              <input id="monthPicker" type="month" aria-label="対象月">
+              <span class="month-input-frame">
+                <input id="monthPicker" type="month" aria-label="対象月">
+              </span>
             </label>
             <button class="danger-button reset-month-button" type="button" data-reset-month-button>この月をリセット</button>
           </div>
@@ -225,7 +227,9 @@
                 <form id="fixedEarlyForm" class="fixed-early-form">
                   <label>
                     <span>対象月</span>
-                    <input id="fixedEarlyTargetMonthInput" type="month" required>
+                    <span class="month-input-frame">
+                      <input id="fixedEarlyTargetMonthInput" type="month" required>
+                    </span>
                   </label>
                   <label>
                     <span>入出金日</span>
@@ -356,7 +360,9 @@
             </div>
             <label class="month-control">
               <span>対象月</span>
-              <input id="monthlyMonthPicker" type="month" aria-label="月次ページの対象月">
+              <span class="month-input-frame">
+                <input id="monthlyMonthPicker" type="month" aria-label="月次ページの対象月">
+              </span>
             </label>
           </div>
 
@@ -389,7 +395,7 @@
           </section>
         </section>
       </main>
-      <footer class="app-version" aria-label="アプリバージョン">v23</footer>
+      <footer class="app-version" aria-label="アプリバージョン">v24</footer>
     </div>
 
     <dialog id="accountsDialog" class="account-dialog">
@@ -469,7 +475,9 @@
         </div>
         <label>
           <span>対象月</span>
-          <input id="walletStatementMonth" type="month" aria-label="財布収支の対象月">
+          <span class="month-input-frame">
+            <input id="walletStatementMonth" type="month" aria-label="財布収支の対象月">
+          </span>
         </label>
         <section class="wallet-statement-summary" aria-label="財布の月別収支">
           <div><span>入金</span><strong id="walletStatementIncome">0円</strong></div>
