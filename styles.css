@@ -477,7 +477,7 @@ select:focus {
 .page--assets[data-account-theme="savings"] .summary-card,
 .page--assets[data-account-theme="savings"] .panel,
 .page--assets[data-account-theme="savings"] .active-account-banner {
-  border-color: rgba(66, 109, 168, 0.34);
+  border-color: var(--line);
   background: #ffffff;
 }
 
@@ -489,12 +489,6 @@ select:focus {
   --tab-accent: #426da8;
   --tab-accent-strong: #294f83;
   --tab-accent-rgb: 66, 109, 168;
-}
-
-.page--assets[data-account-theme="savings"] :is(.ghost-button, .secondary-button, .mini-button, .icon-button, .panel-toggle) {
-  border-color: rgba(66, 109, 168, 0.34);
-  background: rgba(66, 109, 168, 0.08);
-  color: #294f83;
 }
 
 .balance-card__label {
@@ -754,6 +748,12 @@ select:focus {
   font-size: 1.4rem;
   font-weight: 700;
   line-height: 1;
+}
+
+.page--assets[data-account-theme="savings"] :is(.ghost-button, .secondary-button, .mini-button, .icon-button, .panel-toggle) {
+  border-color: var(--line);
+  background: rgba(66, 109, 168, 0.08);
+  color: #294f83;
 }
 
 .panel.is-collapsed .panel-header {
