@@ -1,4 +1,4 @@
-const CACHE_NAME = "household-ledger-pwa-v25";
+const CACHE_NAME = "household-ledger-pwa-v26";
 const APP_ASSETS = [
   "./",
   "./index.html",
@@ -16,40 +16,6 @@ const RESET_HOTFIX_SCRIPT = `<script>
   window.__householdResetHotfixLoaded = true;
   const STORAGE_KEY = "dual-account-budget.v1";
   const MESSAGE_KEY = "household-month-reset-message";
-  const THEME_STYLE_ID = "household-account-theme-hotfix";
-  const THEME_CSS =
-    "body[data-account-theme='savings']{background:#fff;}" +
-    "body[data-account-theme='savings'] .page-tab.is-active{color:#294f83;box-shadow:0 10px 24px rgba(66,109,168,.13),inset 0 1px 0 rgba(255,255,255,.76);}" +
-    "body[data-account-theme='savings'] input:focus,body[data-account-theme='savings'] select:focus{border-color:rgba(66,109,168,.68);box-shadow:0 0 0 3px rgba(66,109,168,.14),inset 0 1px 0 rgba(255,255,255,.76);}" +
-    "body[data-account-theme='savings'] .balance-card{border-color:rgba(255,255,255,.58);background:#fff;}" +
-    "body[data-account-theme='savings'] .balance-card::before{background:rgba(66,109,168,.2);}" +
-    "body[data-account-theme='savings'] .balance-card--total{background:#fff;border-color:rgba(255,255,255,.58);}" +
-    "body[data-account-theme='savings'] .account-tab::before{background:rgba(66,109,168,.42);box-shadow:0 0 0 4px rgba(66,109,168,.08);}" +
-    "body[data-account-theme='savings'] .account-tab::after{background:rgba(66,109,168,.1);color:#294f83;}" +
-    "body[data-account-theme='savings'] .account-tab.is-active{background:linear-gradient(135deg,#426da8,#294f83);box-shadow:0 12px 28px rgba(66,109,168,.24),inset 0 1px 0 rgba(255,255,255,.76);}" +
-    "body[data-account-theme='savings'] .account-tab.is-active::after{background:rgba(255,255,255,.18);color:#fff;}" +
-    "body[data-account-theme='savings'] .primary-button{border-color:rgba(66,109,168,.74);background:linear-gradient(135deg,#426da8,#294f83);box-shadow:0 14px 34px rgba(66,109,168,.22);}" +
-    "body[data-account-theme='savings'] .primary-button:hover{background:linear-gradient(135deg,#4a76b5,#244777);}" +
-    "body[data-account-theme='savings'] .active-account-banner__label{background:#426da8;}" +
-    "body[data-account-theme='savings'] .segmented-control input:checked+label{border-color:rgba(66,109,168,.62);background:rgba(66,109,168,.13);color:#294f83;}" +
-    "body[data-account-theme='savings'] .transaction-kind.transfer,body[data-account-theme='savings'] .transaction-amount.transfer,body[data-account-theme='savings'] .badge.transfer{color:#294f83;}" +
-    "body[data-account-theme='savings'] .badge.transfer{background:rgba(66,109,168,.13);}";
-  const installThemeStyle = () => {
-    if (document.querySelector("#" + THEME_STYLE_ID)) return;
-    const style = document.createElement("style");
-    style.id = THEME_STYLE_ID;
-    style.textContent = THEME_CSS;
-    document.head.append(style);
-  };
-  const applyTheme = () => {
-    installThemeStyle();
-    let activeAccountId = "account-1";
-    try {
-      const state = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "{}");
-      activeAccountId = state.activeAccountId || activeAccountId;
-    } catch {}
-    document.body.dataset.accountTheme = activeAccountId === "account-2" ? "savings" : "main";
-  };
   const ensureButton = (container, className = "") => {
     if (!container || container.querySelector("[data-reset-month-button]")) return;
     const button = document.createElement("button");
@@ -60,7 +26,6 @@ const RESET_HOTFIX_SCRIPT = `<script>
     container.append(button);
   };
   const setup = () => {
-    applyTheme();
     ensureButton(document.querySelector(".asset-topbar"), "reset-month-button");
     ensureButton(document.querySelector(".transactions-actions") || document.querySelector(".transactions-header"));
     const message = window.sessionStorage.getItem(MESSAGE_KEY);
@@ -155,10 +120,6 @@ const RESET_HOTFIX_SCRIPT = `<script>
   };
   document.addEventListener("DOMContentLoaded", setup);
   window.addEventListener("load", setup);
-  document.addEventListener("click", (event) => {
-    if (!event.target.closest("[data-account-button]")) return;
-    window.setTimeout(applyTheme, 0);
-  });
   document.addEventListener("click", (event) => {
     const button = event.target.closest("[data-reset-month-button]");
     if (!button || window.__householdSupportsMonthlyReset) return;

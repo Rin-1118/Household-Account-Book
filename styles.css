@@ -464,33 +464,6 @@ select:focus {
   color: var(--ink);
 }
 
-.page--assets[data-account-theme="savings"] {
-  --accent: #426da8;
-  --accent-strong: #294f83;
-  --accent-hover: #4d79b4;
-  --accent-strong-hover: #244775;
-  --accent-rgb: 66, 109, 168;
-}
-
-.page--assets[data-account-theme="savings"] .asset-topbar,
-.page--assets[data-account-theme="savings"] .balance-card,
-.page--assets[data-account-theme="savings"] .summary-card,
-.page--assets[data-account-theme="savings"] .panel,
-.page--assets[data-account-theme="savings"] .active-account-banner {
-  border-color: var(--line);
-  background: #ffffff;
-}
-
-.page--assets[data-account-theme="savings"] .balance-card::before {
-  background: rgba(66, 109, 168, 0.3);
-}
-
-.page--assets[data-account-theme="savings"] .account-tab {
-  --tab-accent: #426da8;
-  --tab-accent-strong: #294f83;
-  --tab-accent-rgb: 66, 109, 168;
-}
-
 .balance-card__label {
   color: var(--muted);
   font-size: 0.86rem;
@@ -544,18 +517,6 @@ select:focus {
   text-align: left;
   backdrop-filter: blur(14px) saturate(130%);
   -webkit-backdrop-filter: blur(14px) saturate(130%);
-}
-
-.account-tab[data-account-button="account-1"] {
-  --tab-accent: #16776f;
-  --tab-accent-strong: #0e5d57;
-  --tab-accent-rgb: 22, 119, 111;
-}
-
-.account-tab[data-account-button="account-2"] {
-  --tab-accent: #426da8;
-  --tab-accent-strong: #294f83;
-  --tab-accent-rgb: 66, 109, 168;
 }
 
 .account-tab::before {
@@ -748,12 +709,6 @@ select:focus {
   font-size: 1.4rem;
   font-weight: 700;
   line-height: 1;
-}
-
-.page--assets[data-account-theme="savings"] :is(.ghost-button, .secondary-button, .mini-button, .icon-button, .panel-toggle) {
-  border-color: var(--line);
-  background: rgba(66, 109, 168, 0.08);
-  color: #294f83;
 }
 
 .panel.is-collapsed .panel-header {
