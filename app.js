@@ -122,12 +122,14 @@ const elements = {
   accountsForm: document.querySelector("#accountsForm"),
   walletEntryDialog: document.querySelector("#walletEntryDialog"),
   walletEntryForm: document.querySelector("#walletEntryForm"),
+  walletEntryTitle: document.querySelector("#walletEntryTitle"),
   walletEntryAmountInput: document.querySelector("#walletEntryAmountInput"),
   walletEntrySourceGroup: document.querySelector("#walletEntrySourceGroup"),
   walletEntrySourceSelect: document.querySelector("#walletEntrySourceSelect"),
   walletEntryDateInput: document.querySelector("#walletEntryDateInput"),
   walletEntryMemoInput: document.querySelector("#walletEntryMemoInput"),
   walletEntryMessage: document.querySelector("#walletEntryMessage"),
+  saveWalletEntryButton: document.querySelector("#saveWalletEntryButton"),
   walletDialog: document.querySelector("#walletDialog"),
   walletForm: document.querySelector("#walletForm"),
   walletNameInput: document.querySelector("#walletNameInput"),
@@ -150,6 +152,7 @@ let state = loadState();
 let dueBalanceTimerId = null;
 let receiptPreviewUrl = "";
 let receiptCameraStream = null;
+let editingWalletTransactionId = null;
 
 function createDefaultState() {
   return {
@@ -883,6 +886,11 @@ function getSelectedWalletEntryType() {
   return new FormData(elements.walletEntryForm).get("walletEntryType") || "expense";
 }
 
+function setSelectedWalletEntryType(type) {
+  const input = elements.walletEntryForm.querySelector(`input[name="walletEntryType"][value="${type}"]`);
+  if (input) input.checked = true;
+}
+
 function getSelectedFixedType() {
   return new FormData(elements.fixedCostForm).get("fixedType") || "expense";
 }
@@ -977,6 +985,83 @@ function createWalletTransferFromAccount({ account, amount, date, memo }) {
   return transferId;
 }
 
+function findWalletTransaction(transactionId) {
+  return state.walletTransactions.find((transaction) => transaction.id === transactionId) || null;
+}
+
+function removeWalletTransaction(transaction) {
+  if (!transaction) return false;
+
+  const walletTransactionsToRemove = transaction.transferId
+    ? state.walletTransactions.filter((item) => item.transferId === transaction.transferId)
+    : [transaction];
+
+  walletTransactionsToRemove.forEach((item) => reverseWalletBalanceImpact(item));
+  const walletTransactionIdsToRemove = new Set(walletTransactionsToRemove.map((item) => item.id));
+  state.walletTransactions = state.walletTransactions.filter((item) => !walletTransactionIdsToRemove.has(item.id));
+
+  if (transaction.sourceType === "account" && transaction.transferId) {
+    state.accounts.forEach((account) => {
+      account.transactions = account.transactions.filter((item) => {
+        const shouldRemove =
+          item.transferId === transaction.transferId &&
+          item.source === "wallet-transfer" &&
+          item.transferPeerAccountId === "wallet";
+        if (!shouldRemove) return true;
+        reverseBalanceImpact(account, item);
+        return false;
+      });
+    });
+  }
+
+  return true;
+}
+
+function saveWalletEntryFromForm({ existingTransaction = null } = {}) {
+  const amount = Number(elements.walletEntryAmountInput.value);
+  const date = elements.walletEntryDateInput.value;
+  const memo = elements.walletEntryMemoInput.value.trim();
+  const type = getSelectedWalletEntryType();
+  const sourceValue = elements.walletEntrySourceSelect.value || "other";
+  const sourceAccount = type === "income" && sourceValue !== "other" ? getAccountById(sourceValue) : null;
+  const category = type === "income" ? "財布収入" : "財布支出";
+
+  if (!Number.isFinite(amount) || amount <= 0 || !date) {
+    setMessage(elements.walletEntryMessage, "金額と日付を確認してください。");
+    return false;
+  }
+
+  if (type === "income" && sourceValue !== "other" && !sourceAccount) {
+    setMessage(elements.walletEntryMessage, "入金元を確認してください。");
+    return false;
+  }
+
+  if (existingTransaction) removeWalletTransaction(existingTransaction);
+
+  if (sourceAccount) {
+    createWalletTransferFromAccount({ account: sourceAccount, amount, date, memo });
+    return true;
+  }
+
+  const transaction = {
+    id: existingTransaction?.id || uid("wallet"),
+    type,
+    date,
+    amount,
+    category,
+    memo,
+    sourceType: type === "income" ? "other" : null,
+    sourceAccountId: null,
+    transferId: null,
+    balanceImpactApplied: false,
+    createdAt: existingTransaction?.createdAt || new Date().toISOString(),
+  };
+
+  applyWalletBalanceImpact(transaction);
+  state.walletTransactions.push(transaction);
+  return true;
+}
+
 function getSelectedFixedStartMonth() {
   return elements.fixedStartMonthSelect.value === "current" ? currentMonthKey() : nextMonthKey();
 }
@@ -1034,58 +1119,20 @@ function addWalletTransaction(event) {
   if (event.submitter?.id !== "saveWalletEntryButton") return;
   event.preventDefault();
 
-  const amount = Number(elements.walletEntryAmountInput.value);
-  const date = elements.walletEntryDateInput.value;
-  const memo = elements.walletEntryMemoInput.value.trim();
-  const type = getSelectedWalletEntryType();
-  const sourceValue = elements.walletEntrySourceSelect.value || "other";
-  const sourceAccount = type === "income" && sourceValue !== "other" ? getAccountById(sourceValue) : null;
-  const category = type === "income" ? "財布収入" : "財布支出";
-
-  if (!Number.isFinite(amount) || amount <= 0 || !date) {
-    setMessage(elements.walletEntryMessage, "金額と日付を確認してください。");
+  const existingTransaction = editingWalletTransactionId ? findWalletTransaction(editingWalletTransactionId) : null;
+  if (editingWalletTransactionId && !existingTransaction) {
+    setMessage(elements.walletEntryMessage, "編集対象の記録が見つかりません。");
     return;
   }
-
-  if (type === "income" && sourceValue !== "other" && !sourceAccount) {
-    setMessage(elements.walletEntryMessage, "入金元を確認してください。");
-    return;
-  }
-
-  const createdAt = new Date().toISOString();
-
-  if (sourceAccount) {
-    createWalletTransferFromAccount({ account: sourceAccount, amount, date, memo });
-    saveState();
-    elements.walletEntryAmountInput.value = "";
-    elements.walletEntryMemoInput.value = "";
-    elements.walletEntryDialog.close();
-    render();
-    return;
-  }
-
-  const transaction = {
-    id: uid("wallet"),
-    type,
-    date,
-    amount,
-    category,
-    memo,
-    sourceType: type === "income" ? "other" : null,
-    sourceAccountId: null,
-    transferId: null,
-    balanceImpactApplied: false,
-    createdAt,
-  };
-
-  applyWalletBalanceImpact(transaction);
-  state.walletTransactions.push(transaction);
+  if (!saveWalletEntryFromForm({ existingTransaction })) return;
 
   saveState();
+  editingWalletTransactionId = null;
   elements.walletEntryAmountInput.value = "";
   elements.walletEntryMemoInput.value = "";
   elements.walletEntryDialog.close();
   render();
+  renderWalletStatement();
 }
 
 function clearReceiptPreview() {
@@ -1642,13 +1689,13 @@ function deleteTransaction(transactionId) {
   if (!transaction) return;
 
   if (transaction.source === "wallet-transfer" && transaction.transferId) {
-    reverseBalanceImpact(account, transaction);
     const walletTransaction = state.walletTransactions.find((item) => item.transferId === transaction.transferId);
     if (walletTransaction) {
-      reverseWalletBalanceImpact(walletTransaction);
-      state.walletTransactions = state.walletTransactions.filter((item) => item.transferId !== transaction.transferId);
+      removeWalletTransaction(walletTransaction);
+    } else {
+      reverseBalanceImpact(account, transaction);
+      account.transactions = account.transactions.filter((item) => item.id !== transactionId);
     }
-    account.transactions = account.transactions.filter((item) => item.id !== transactionId);
     saveState();
     render();
     return;
@@ -1678,6 +1725,19 @@ function deleteTransaction(transactionId) {
   account.transactions = account.transactions.filter((item) => item.id !== transactionId);
   saveState();
   render();
+}
+
+function deleteWalletTransaction(transactionId) {
+  const transaction = findWalletTransaction(transactionId);
+  if (!transaction) return;
+  const linkedAccount = transaction.sourceType === "account" && transaction.sourceAccountId ? getAccountById(transaction.sourceAccountId) : null;
+  const linkedText = linkedAccount ? `\n${linkedAccount.name}側の対応する入金記録も削除します。` : "";
+  if (!window.confirm(`この財布の記録を削除します。${linkedText}`)) return;
+
+  removeWalletTransaction(transaction);
+  saveState();
+  render();
+  renderWalletStatement();
 }
 
 function deleteRecurring(recurringId) {
@@ -2360,6 +2420,9 @@ function openAccountsDialog() {
 }
 
 function openWalletEntryDialog() {
+  editingWalletTransactionId = null;
+  elements.walletEntryTitle.textContent = "財布の入出金";
+  elements.saveWalletEntryButton.textContent = "保存";
   elements.walletEntryForm.reset();
   elements.walletEntryAmountInput.value = "";
   elements.walletEntryMemoInput.value = "";
@@ -2367,6 +2430,27 @@ function openWalletEntryDialog() {
   renderWalletEntrySourceOptions();
   updateWalletEntrySourceVisibility();
   setDefaultWalletEntryDate();
+  elements.walletEntryDialog.showModal();
+}
+
+function openWalletEntryEditDialog(transactionId) {
+  const transaction = findWalletTransaction(transactionId);
+  if (!transaction) return;
+
+  editingWalletTransactionId = transaction.id;
+  elements.walletEntryTitle.textContent = "財布の入出金を編集";
+  elements.saveWalletEntryButton.textContent = "更新";
+  elements.walletEntryMessage.textContent = "";
+  elements.walletEntryAmountInput.value = Math.round(Number(transaction.amount || 0));
+  elements.walletEntryDateInput.value = transaction.date || todayIso();
+  elements.walletEntryMemoInput.value = transaction.memo || "";
+  setSelectedWalletEntryType(transaction.type === "income" ? "income" : "expense");
+  renderWalletEntrySourceOptions();
+  elements.walletEntrySourceSelect.value =
+    transaction.sourceType === "account" && transaction.sourceAccountId && getAccountById(transaction.sourceAccountId)
+      ? transaction.sourceAccountId
+      : "other";
+  updateWalletEntrySourceVisibility();
   elements.walletEntryDialog.showModal();
 }
 
@@ -2415,10 +2499,25 @@ function renderWalletStatement() {
           <span class="badge ${isIncome ? "income" : "expense"}">${escapeHtml(walletStatementMethod(transaction))}</span>
           <span class="wallet-statement-detail">${escapeHtml(detail)}</span>
           <strong class="transaction-amount ${isIncome ? "income" : "expense"}">${isIncome ? "+" : "-"}${formatYen(transaction.amount)}</strong>
+          <span class="wallet-statement-actions">
+            <button class="mini-button" type="button" data-edit-wallet-transaction="${escapeHtml(transaction.id)}">編集</button>
+            <button class="danger-button" type="button" data-delete-wallet-transaction="${escapeHtml(transaction.id)}">削除</button>
+          </span>
         </article>
       `;
     })
     .join("");
+}
+
+function handleWalletStatementClick(event) {
+  const editButton = event.target.closest("[data-edit-wallet-transaction]");
+  if (editButton) {
+    openWalletEntryEditDialog(editButton.dataset.editWalletTransaction);
+    return;
+  }
+
+  const deleteButton = event.target.closest("[data-delete-wallet-transaction]");
+  if (deleteButton) deleteWalletTransaction(deleteButton.dataset.deleteWalletTransaction);
 }
 
 function openWalletStatementDialog() {
@@ -2506,6 +2605,11 @@ function init() {
   bindTransactionTypeReset();
   elements.accountExpenseDestinationSelect.addEventListener("change", updateAccountExpenseDestinationVisibility);
   elements.walletEntryForm.addEventListener("submit", addWalletTransaction);
+  elements.walletEntryDialog.addEventListener("close", () => {
+    editingWalletTransactionId = null;
+    elements.walletEntryTitle.textContent = "財布の入出金";
+    elements.saveWalletEntryButton.textContent = "保存";
+  });
   elements.walletEntryForm.addEventListener("change", updateWalletEntrySourceVisibility);
   elements.captureReceiptButton.addEventListener("click", openReceiptCamera);
   elements.takeReceiptPhotoButton.addEventListener("click", captureReceiptPhoto);
@@ -2549,6 +2653,7 @@ function init() {
   elements.openWalletEntryButton.addEventListener("click", openWalletEntryDialog);
   elements.openWalletStatementButton.addEventListener("click", openWalletStatementDialog);
   elements.walletStatementMonth.addEventListener("change", renderWalletStatement);
+  elements.walletStatementList.addEventListener("click", handleWalletStatementClick);
   elements.editWalletButton.addEventListener("click", openWalletDialog);
   elements.accountsForm.addEventListener("submit", saveAccountNames);
   elements.walletForm.addEventListener("submit", saveWalletBalance);

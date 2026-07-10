@@ -1183,6 +1183,19 @@ canvas {
   font-weight: 800;
 }
 
+.wallet-statement-actions {
+  display: flex;
+  grid-column: 3 / 5;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.wallet-statement-actions .mini-button,
+.wallet-statement-actions .danger-button {
+  min-height: 34px;
+  padding: 0 10px;
+}
+
 .dialog-header,
 .dialog-actions {
   display: flex;
@@ -1427,6 +1440,11 @@ canvas {
   .wallet-statement-row .transaction-amount {
     grid-column: 3;
     grid-row: 1 / 3;
+  }
+
+  .wallet-statement-actions {
+    grid-column: 1 / 4;
+    justify-content: flex-start;
   }
 
   .transactions-header {
