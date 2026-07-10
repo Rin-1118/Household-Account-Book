@@ -1192,6 +1192,7 @@ canvas {
 
 .wallet-statement-actions .mini-button,
 .wallet-statement-actions .danger-button {
+  width: 56px;
   min-height: 34px;
   padding: 0 10px;
 }
